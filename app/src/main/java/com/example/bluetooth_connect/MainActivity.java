@@ -25,90 +25,15 @@ import androidx.core.content.ContextCompat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
-    private Button mScanBtnPresencas;
+    private Button initiateConnectionButton;
 
-    private ProgressDialog mProgressDlg;
-    private ArrayList<BluetoothDevice> mDeviceList = new ArrayList<BluetoothDevice>();
     private BluetoothAdapter mBluetoothAdapter;
 
-    private UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        boolean isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        if (!isGpsEnabled) {
-            startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), 1);
-        }
-
-        mScanBtnPresencas = (Button) findViewById(R.id.buttonSearch);
-
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        mProgressDlg = new ProgressDialog(this);
-
-        mProgressDlg.setMessage("Scanning...");
-        mProgressDlg.setCancelable(false);
-        mProgressDlg.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-
-                if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED)
-                {
-                    //System.out.println("NO PERMISSIONS ON SCAN");
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                    {
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 2);
-                        return;
-                    }
-                }
-                mBluetoothAdapter.cancelDiscovery();
-            }
-        });
-
-        mScanBtnPresencas.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View arg0) {
-                showToast("Start Discovering!");
-                if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED)
-                {
-                    //System.out.println("NO PERMISSIONS ON SCAN");
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                    {
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 2);
-                        return;
-                    }
-                }
-
-
-                mBluetoothAdapter.startDiscovery();
-            }
-        });
-
-        IntentFilter filter = new IntentFilter();
-
-
-        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
-        filter.addAction(BluetoothDevice.ACTION_FOUND);
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-
-        registerReceiver(mReceiver, filter);
-
-
-    }
-
-    private void showToast(String message) {
-        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
-    }
+    private final UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -116,64 +41,141 @@ public class MainActivity extends AppCompatActivity {
 
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
-
                 if (state == BluetoothAdapter.STATE_ON) {
-                    showToast("Enabled");
-
-                    showEnabled();
+                    showToast("Bluetooth Enabled");
+                    // Since Bluetooth is enabled, proceed to connect directly to the device
+                    connectToDevice();
                 }
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
-                mDeviceList = new ArrayList<BluetoothDevice>();
+            }
+        }
 
-                mProgressDlg.show();
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
-                mProgressDlg.dismiss();
+    };
 
-                /*Intent newIntent = new Intent(AdicionarPresencaBlt.this, DeviceListActivityPresencas.class);
+    private void connectToDevice() {
+        // Get the Bluetooth adapter
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-                newIntent.putParcelableArrayListExtra("device.list", mDeviceList);
+        // Check if Bluetooth adapter is null or not enabled
+        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+            showToast("Bluetooth adapter is not available or not enabled");
+            return;
+        }
 
-                startActivity(newIntent);*/
-                System.out.println(mDeviceList);
-            } else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+        // Get the Bluetooth device by its known MAC address
+        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice("D8:3A:DD:36:E5:30");
 
-                mDeviceList.add(device);
-                if(device.getAddress().equals("D8:3A:DD:36:E5:30")) {
-                    if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED)
-                    {
-                        //System.out.println("NO PERMISSIONS ON SCAN");
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                        {
-                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 2);
-                            return;
-                        }
-                    }
-                    mBluetoothAdapter.cancelDiscovery();
-                    mProgressDlg.dismiss();
-                    BluetoothDevice deviceToConnect = mBluetoothAdapter.getRemoteDevice("D8:3A:DD:36:E5:30");
-                    initializeSocket(deviceToConnect, uuid);
-                    connectSocket();
+        // Check if device is null
+        if (device == null) {
+            showToast("Device not found. Make sure it is in range and Bluetooth is enabled.");
+            return;
+        }
 
-                    String message = "Hello, from Android Device!";
-                    byte[] bytesToSend = uuid.toString().getBytes();
-                    sendData(bytesToSend);
+        // Check for Bluetooth connect permission
+        if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 2);
+                return;
+            }
+        }
 
+        // Cancel any ongoing discovery
+        mBluetoothAdapter.cancelDiscovery();
+
+        // Connect to the Bluetooth device
+        initializeSocket(device, uuid);
+        connectSocket();
+
+        // Send data or perform any other necessary operations
+        byte[] bytesToSend = uuid.toString().getBytes();
+        sendData(bytesToSend);
+
+        showToast("Connecting to device " + device.getName() + " (" + device.getAddress() + ")");
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+    }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // Check and request GPS if not enabled
+        checkAndRequestGPS();
+
+        // Initialize Bluetooth components
+        initializeBluetooth();
+
+//        // Connect directly to the known Bluetooth device
+//        connectToDeviceDirectly();
+    }
+
+    private void checkAndRequestGPS() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        boolean isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if (!isGpsEnabled) {
+            startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), 1);
+        }
+    }
+
+    private void initializeBluetooth() {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        initiateConnectionButton = findViewById(R.id.buttonStart);
+        Button stopConnectionButton = findViewById(R.id.buttonStop);
+
+        ProgressDialog mProgressDlg = new ProgressDialog(this);
+        mProgressDlg.setMessage("Scanning...");
+        mProgressDlg.setCancelable(false);
+        mProgressDlg.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", (dialog, which) -> {
+            dialog.dismiss();
+
+            if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 2);
+                    return;
                 }
-                if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED)
-                {
-                    //System.out.println("NO PERMISSIONS ON GETNAME OF DEVICE");
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                    {
+            }
+            mBluetoothAdapter.cancelDiscovery();
+        });
+
+        initiateConnectionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View arg0) {
+                showToast("Start Discovering!");
+                if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 2);
                         return;
                     }
                 }
-
-                showToast("Found device " + device.getName());
+                connectToDeviceDirectly();
+                //mBluetoothAdapter.startDiscovery();
             }
-        }
-    };
+        });
+
+        stopConnectionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //_socket.close();
+                closeConnection();
+            }
+        });
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        filter.addAction(BluetoothDevice.ACTION_FOUND);
+        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
+        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+
+        registerReceiver(mReceiver, filter);
+    }
+
+    private void connectToDeviceDirectly() {
+        // Connect directly to the known Bluetooth device
+        connectToDevice();
+    }
+
 
     private void showEnabled() {
         /*mStatusTv.setText("Bluetooth is On");
@@ -183,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
         mActivateBtn.setEnabled(true);*/
 
         /*mPairedBtn.setEnabled(true);*/
-        mScanBtnPresencas.setEnabled(true);
+        initiateConnectionButton.setEnabled(true);
     }
 
 
@@ -223,16 +225,14 @@ public class MainActivity extends AppCompatActivity {
             }
             _socket.connect();
         } catch (IOException connEx) {
-            try {
-                _socket.close();
-            } catch (IOException closeException) {
-                // Handle error
-            }
+            closeConnection();
+            //_socket.close();
         }
 
         if (_socket != null && _socket.isConnected()) {
             // Socket is connected, now we can obtain our IO streams
             try {
+                //System.out.println("Estou conectado !!");
                 _inStream = _socket.getInputStream();
                 _outStream = _socket.getOutputStream();
             } catch (IOException e) {
@@ -260,13 +260,77 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public boolean receiveConfirmation() {
+        byte[] buffer = new byte[1024];
+        int bytesCount;
+        boolean confirmationReceived = false;
+        long startTime = System.currentTimeMillis();
+
+        try {
+            while (!confirmationReceived && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
+                // Read from input stream
+                bytesCount = _inStream.read(buffer);
+                if (bytesCount > 0) {
+                    String receivedData = new String(buffer, 0, bytesCount);
+                    // Check for confirmation message
+                    if (receivedData.equals("ConfirmationMessage")) {
+                        confirmationReceived = true;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // Handle error
+        }
+
+        if (!confirmationReceived) {
+            // Handle timeout here
+            System.out.println("Timeout: Confirmation not received.");
+            //showToast("Timeout: Confirmation not received.");
+        }
+
+        return confirmationReceived;
+    }
+
+
+
+
     public void sendData(byte[] bytes) {
+        try {
+            _outStream.write(bytes);
+
+            // Wait for confirmation
+            boolean confirmationReceived = receiveConfirmation();
+
+            if (confirmationReceived) {
+                System.out.println("Message sent and confirmation received!");
+                //showToast("Message sent and confirmation received!");
+                sendReadyForDataMessage();
+            } else {
+                System.out.println("Confirmation not received. Message may not have been delivered.");
+                //showToast("Confirmation not received. Message may not have been delivered.");
+                closeConnection();
+            }
+
+        } catch (IOException e) {
+            // Handle error
+        }
+    }
+
+    private void sendReadyForDataMessage() throws IOException {
+        String ready = "Ready for data";
+        _outStream.write(ready.getBytes());
+    }
+
+
+
+    /*public void sendData(byte[] bytes) {
         try {
             _outStream.write(bytes);
         } catch (IOException e) {
             // Handle error
         }
-    }
+    }*/
+
 
     public void closeConnection() {
         try {
@@ -280,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
                 _socket.close();
             }
         } catch (IOException e) {
-            // Handle error
+            System.out.println("No connection OPEN !!!");
         }
     }
 }
