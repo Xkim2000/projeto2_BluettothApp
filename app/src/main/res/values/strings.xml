@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Bluetooth_Connect</string>
+    <string name="service_bluetooth_description">Service for bluetooth background</string>
+
 </resources>
