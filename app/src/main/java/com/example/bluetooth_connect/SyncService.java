@@ -3,8 +3,12 @@ package com.example.bluetooth_connect;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -93,10 +97,15 @@ public class SyncService extends Service {
     private void syncData() {
         // Implement your data sync logic here
         // This could involve network calls, updating the SQLite database, etc.
-        //TODO Verify if it has internet connection
+        if(has_Internet()){
+            Log.d(TAG,"Device has Internet !");
+            Log.d(TAG,"Syncing data...");
+        }else{
+            Log.d(TAG,"NO INTERNET!");
+        }
 
         //TODO Make database connection
-        Log.d(TAG, "Syncing data...");
+        //Log.d(TAG, "Syncing data...");
     }
 
     private void updateNotification() {
@@ -137,7 +146,23 @@ public class SyncService extends Service {
         return builder.build();
     }
 
+    private boolean has_Internet(){
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network activeNetwork = connectivityManager.getActiveNetwork();
 
+        if (activeNetwork != null) {
+            NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
+            if (networkCapabilities != null && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                // Device has internet connection
+                return true;
+            } else {
+                // Device does not have internet connection
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
