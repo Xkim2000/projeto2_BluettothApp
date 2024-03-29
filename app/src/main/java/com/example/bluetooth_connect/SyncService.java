@@ -42,6 +42,8 @@ public class SyncService extends Service {
             return;
         }
 
+        //TODO Change the part of the notification for the Sync Data function
+
         // Create a notification for the foreground service
         Notification notification = createNotification();
         if (notification != null) {
@@ -91,6 +93,9 @@ public class SyncService extends Service {
     private void syncData() {
         // Implement your data sync logic here
         // This could involve network calls, updating the SQLite database, etc.
+        //TODO Verify if it has internet connection
+
+        //TODO Make database connection
         Log.d(TAG, "Syncing data...");
     }
 
