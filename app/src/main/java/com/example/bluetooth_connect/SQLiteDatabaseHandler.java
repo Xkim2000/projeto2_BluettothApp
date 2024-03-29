@@ -1,5 +1,6 @@
 package com.example.bluetooth_connect;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -24,10 +25,10 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
     private static final String KEY_EQUIPMENT_LOCATION = "location";
 
     // Users Data table column names
-    private static final String KEY_USER_CLASS = "class";
-    private static final String KEY_USER_TIMESTAMP = "timestamp";
-    private static final String KEY_USER_DEVICE_ID = "device_id";
-    private static final String KEY_USER_IS_SYNCED = "is_synced";
+    private static final String KEY_RECORD_CLASS = "class";
+    private static final String KEY_RECORD_TIMESTAMP = "timestamp";
+    private static final String KEY_RECORD_DEVICE_ID = "deviceId";
+    private static final String KEY_RECORD_IS_SYNCED = "isSynced";
 
     public SQLiteDatabaseHandler(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -46,10 +47,10 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         // Create Users Data table
         String CREATE_USERS_DATA_TABLE = "CREATE TABLE " + TABLE_USERS_DATA + "("
                 + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + KEY_USER_CLASS + " VARCHAR(30),"
-                + KEY_USER_TIMESTAMP + " TIMESTAMP,"
-                + KEY_USER_DEVICE_ID + " VARCHAR(50),"
-                + KEY_USER_IS_SYNCED + " BOOLEAN"
+                + KEY_RECORD_CLASS + " VARCHAR(30),"
+                + KEY_RECORD_TIMESTAMP + " TIMESTAMP,"
+                + KEY_RECORD_DEVICE_ID + " VARCHAR(50),"
+                + KEY_RECORD_IS_SYNCED + " BOOLEAN"
                 + ")";
         db.execSQL(CREATE_USERS_DATA_TABLE);
     }
@@ -63,4 +64,16 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         // Create tables again
         onCreate(db);
     }
+
+    public void addRecord(Record record){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(KEY_RECORD_CLASS, record.getRecordClass());
+        values.put(KEY_RECORD_TIMESTAMP, record.getTimestamp().toString());
+        values.put(KEY_RECORD_DEVICE_ID, record.getDeviceId());
+        values.put(KEY_RECORD_IS_SYNCED, record.is_synced());
+    }
+
+    //TODO getRecord(), getRecordNotSynced(), deleteAlreadySynced()
+
 }
