@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -20,11 +21,19 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private BluetoothService bluetoothService;
     private boolean isBound = false;
+
+    private SQLiteDatabaseHandler db;
+
+    private EquipmentApiClient apiClient;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -57,22 +66,63 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, BluetoothService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
-//        connectButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                if (bluetoothService != null && isBound) {
-//                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-//                    if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
-//                        BluetoothDevice device = bluetoothAdapter.getRemoteDevice("D8:3A:DD:36:E5:30");
-//                        bluetoothService.connectToDevice(device);
-//                    } else {
-//                        Log.e(TAG, "Bluetooth adapter is not available or not enabled");
-//                    }
-//                } else {
-//                    Log.e(TAG, "Bluetooth service not bound");
-//                }
-//            }
-//        });
+        db = new SQLiteDatabaseHandler(this);
+
+        //Device deviceTest = new Device("PRN-d83add36e52c", "Proença-a-Nova-3", 39.781908022317424, -7.8138558910675275);
+        //db.addDevice(deviceTest);
+
+        //db.getAllDevices();
+
+        apiClient = new EquipmentApiClient();
+
+        // Create and start a new Thread to make the API call
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Make the API call to get all equipment
+                    List<Device> equipmentList = apiClient.getAllEquipment().execute().body();
+
+                    // Handle the list of equipment on the main thread
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (equipmentList != null) {
+                                // Handle the list of equipment as needed
+                                for (Device equipment : equipmentList) {
+                                    Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
+                                    // Do something with each equipment item
+                                }
+                            } else {
+                                // Handle errors
+                                Log.e("API Error", "Failed to get equipment list");
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e("API Error", "Failed to get equipment: " + e.getMessage());
+                }
+            }
+        }).start();
+
+/*
+        connectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (bluetoothService != null && isBound) {
+                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                    if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+                        BluetoothDevice device = bluetoothAdapter.getRemoteDevice("D8:3A:DD:36:E5:30");
+                        bluetoothService.connectToDevice(device);
+                    } else {
+                        Log.e(TAG, "Bluetooth adapter is not available or not enabled");
+                    }
+                } else {
+                    Log.e(TAG, "Bluetooth service not bound");
+                }
+            }
+        });
+*/
 
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -113,6 +163,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+
 
     @Override
     protected void onDestroy() {
