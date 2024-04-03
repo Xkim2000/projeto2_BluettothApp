@@ -29,8 +29,9 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
     private static final String KEY_EQUIPMENT_NAME = "name";
     private static final String KEY_EQUIPMENT_LONG = "longitude";
     private static final String KEY_EQUIPMENT_LAT = "latitude";
+    private static final String KEY_EQUIPMENT_MAC = "macAddress";
 
-    private static final String[] COLUMNS_TABLE_DEVICES = { KEY_ID, KEY_EQUIPMENT_NAME, KEY_EQUIPMENT_LONG, KEY_EQUIPMENT_LAT};
+    private static final String[] COLUMNS_TABLE_DEVICES = { KEY_ID, KEY_EQUIPMENT_NAME, KEY_EQUIPMENT_LONG, KEY_EQUIPMENT_LAT, KEY_EQUIPMENT_MAC};
 
     // Users Data table column names
     private static final String KEY_RECORD_CLASS = "class";
@@ -51,7 +52,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                 + KEY_ID + " VARCHAR(50) PRIMARY KEY,"
                 + KEY_EQUIPMENT_NAME + " VARCHAR(150),"
                 + KEY_EQUIPMENT_LAT + " DOUBLE,"
-                + KEY_EQUIPMENT_LONG + " DOUBLE"
+                + KEY_EQUIPMENT_LONG + " DOUBLE,"
+                + KEY_EQUIPMENT_MAC + " VARCHAR(17) "
                 + ")";
         db.execSQL(CREATE_EQUIPMENT_TABLE);
 
@@ -211,13 +213,40 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
 
     public void addDevice(Device device){
         SQLiteDatabase db = this.getWritableDatabase();
+
+        // Check if the device exists in the database
+        boolean deviceExists = checkDeviceExists(device.getId(), db);
+
         ContentValues values = new ContentValues();
         values.put(KEY_ID, device.getId());
         values.put(KEY_EQUIPMENT_NAME, device.getName());
         values.put(KEY_EQUIPMENT_LAT, device.getLatitude());
         values.put(KEY_EQUIPMENT_LONG, device.getLongitude());
-        db.insert(TABLE_EQUIPMENT,null, values);
+        values.put(KEY_EQUIPMENT_MAC, device.getMac());
+
+        if (deviceExists) {
+            // Device exists, perform an update
+            db.update(TABLE_EQUIPMENT, values, KEY_ID + " = ?", new String[]{String.valueOf(device.getId())});
+        } else {
+            // Device does not exist, perform an insert
+            db.insert(TABLE_EQUIPMENT, null, values);
+        }
+
         db.close();
+    }
+
+    // Helper method to check if a device with the given id exists in the database
+    private boolean checkDeviceExists(String deviceId, SQLiteDatabase db) {
+        String[] columns = {KEY_ID};
+        String selection = KEY_ID + " = ?";
+        String[] selectionArgs = {deviceId};
+        String limit = "1";
+
+        Cursor cursor = db.query(TABLE_EQUIPMENT, columns, selection, selectionArgs, null, null, null, limit);
+        boolean exists = (cursor.getCount() > 0);
+        cursor.close();
+
+        return exists;
     }
 
     public Device getDevice(String id){
@@ -237,7 +266,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                     cursor.getString(0),
                     cursor.getString(1),
                     cursor.getDouble(2),
-                    cursor.getDouble(3)
+                    cursor.getDouble(3),
+                    cursor.getString(4)
             );
             cursor.close();
             return device;
@@ -257,7 +287,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                device = new Device(cursor.getString(0), cursor.getString(1), cursor.getDouble(2), cursor.getDouble(3));
+                device = new Device(cursor.getString(0), cursor.getString(1), cursor.getDouble(2), cursor.getDouble(3), cursor.getString(4));
                 devices.add(device);
             } while (cursor.moveToNext());
             cursor.close();
