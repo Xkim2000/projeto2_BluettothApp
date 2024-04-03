@@ -1,11 +1,14 @@
 package com.example.bluetooth_connect;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -56,6 +59,12 @@ public class MainActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, BluetoothService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+        createNotificationChannel();
+
+        //SYNC Service initalization
+        startSyncService();
+
 
 //        connectButton.setOnClickListener(new View.OnClickListener() {
 //            @Override
@@ -114,12 +123,31 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (isBound) {
             unbindService(serviceConnection);
             isBound = false;
+        }
+    }
+
+    private void startSyncService() {
+        Intent serviceIntent = new Intent(this, SyncService.class);
+        startService(serviceIntent);
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Sync Service Channel";
+            String description = "Sync Service Channel Description";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel("ChannelID", name, importance);
+            channel.setDescription(description);
+
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
         }
     }
 }
