@@ -8,6 +8,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,16 +18,9 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import com.example.bluetooth_connect.BluetoothService.BluetoothBinder;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -79,35 +75,37 @@ public class MainActivity extends AppCompatActivity {
         apiClient = new EquipmentApiClient();
 
         // Create and start a new Thread to make the API call
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    // Make the API call to get all equipment
-                    List<Device> equipmentList = apiClient.getAllEquipment().execute().body();
+        if(has_Internet()){
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        // Make the API call to get all equipment
+                        List<Device> equipmentList = apiClient.getAllEquipment().execute().body();
 
-                    // Handle the list of equipment on the main thread
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (equipmentList != null) {
-                                // Handle the list of equipment as needed
-                                for (Device equipment : equipmentList) {
-                                    //Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
-                                    // Do something with each equipment item
-                                    db.addDevice(new Device(equipment.getId(),equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
+                        // Handle the list of equipment on the main thread
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (equipmentList != null) {
+                                    // Handle the list of equipment as needed
+                                    for (Device equipment : equipmentList) {
+                                        //Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
+                                        // Do something with each equipment item
+                                        db.addDevice(new Device(equipment.getId(),equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
+                                    }
+                                } else {
+                                    // Handle errors
+                                    Log.e("API Error", "Failed to get equipment list");
                                 }
-                            } else {
-                                // Handle errors
-                                Log.e("API Error", "Failed to get equipment list");
                             }
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e("API Error", "Failed to get equipment: " + e.getMessage());
+                        });
+                    } catch (Exception e) {
+                        Log.e("API Error", "Failed to get equipment: " + e.getMessage());
+                    }
                 }
-            }
-        }).start();
+            }).start();
+        }
 
 /*
         connectButton.setOnClickListener(new View.OnClickListener() {
@@ -186,6 +184,24 @@ public class MainActivity extends AppCompatActivity {
     private void startSyncService() {
         Intent serviceIntent = new Intent(this, SyncService.class);
         startService(serviceIntent);
+    }
+
+    private boolean has_Internet(){
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network activeNetwork = connectivityManager.getActiveNetwork();
+
+        if (activeNetwork != null) {
+            NetworkCapabilities networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
+            if (networkCapabilities != null && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                // Device has internet connection
+                return true;
+            } else {
+                // Device does not have internet connection
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
 
     private void createNotificationChannel() {
