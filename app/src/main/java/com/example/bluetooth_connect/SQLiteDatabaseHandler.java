@@ -29,8 +29,9 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
     private static final String KEY_EQUIPMENT_NAME = "name";
     private static final String KEY_EQUIPMENT_LONG = "longitude";
     private static final String KEY_EQUIPMENT_LAT = "latitude";
+    private static final String KEY_EQUIPMENT_MAC = "macAddress";
 
-    private static final String[] COLUMNS_TABLE_DEVICES = { KEY_ID, KEY_EQUIPMENT_NAME, KEY_EQUIPMENT_LONG, KEY_EQUIPMENT_LAT};
+    private static final String[] COLUMNS_TABLE_DEVICES = { KEY_ID, KEY_EQUIPMENT_NAME, KEY_EQUIPMENT_LONG, KEY_EQUIPMENT_LAT, KEY_EQUIPMENT_MAC};
 
     // Users Data table column names
     private static final String KEY_RECORD_CLASS = "class";
@@ -51,7 +52,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                 + KEY_ID + " VARCHAR(50) PRIMARY KEY,"
                 + KEY_EQUIPMENT_NAME + " VARCHAR(150),"
                 + KEY_EQUIPMENT_LAT + " DOUBLE,"
-                + KEY_EQUIPMENT_LONG + " DOUBLE"
+                + KEY_EQUIPMENT_LONG + " DOUBLE,"
+                + KEY_EQUIPMENT_MAC + " VARCHAR(17) "
                 + ")";
         db.execSQL(CREATE_EQUIPMENT_TABLE);
 
