@@ -218,6 +218,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         values.put(KEY_EQUIPMENT_NAME, device.getName());
         values.put(KEY_EQUIPMENT_LAT, device.getLatitude());
         values.put(KEY_EQUIPMENT_LONG, device.getLongitude());
+        values.put(KEY_EQUIPMENT_MAC, device.getLongitude());
         db.insert(TABLE_EQUIPMENT,null, values);
         db.close();
     }
