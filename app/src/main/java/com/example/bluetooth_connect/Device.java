@@ -5,12 +5,15 @@ public class Device {
     private String name;
     private Double latitude;
     private Double longitude;
+    private String macAddress;
 
-    public Device(String id, String name, Double latitude, Double longitude) {
+
+    public Device(String id, String name, Double latitude, Double longitude, String macAddress) {
         setId(id);
         setName(name);
         setLatitude(latitude);
         setLongitude(longitude);
+        setMac(macAddress);
     }
 
     public String getId() {
@@ -43,5 +46,13 @@ public class Device {
 
     public void setLatitude(Double latitude) {
         this.latitude = latitude;
+    }
+
+    public String getMac() {
+        return macAddress;
+    }
+
+    public void setMac(String macAddress) {
+        this.macAddress = macAddress;
     }
 }

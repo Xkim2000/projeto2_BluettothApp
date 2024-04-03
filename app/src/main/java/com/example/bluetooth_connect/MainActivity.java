@@ -93,8 +93,9 @@ public class MainActivity extends AppCompatActivity {
                             if (equipmentList != null) {
                                 // Handle the list of equipment as needed
                                 for (Device equipment : equipmentList) {
-                                    Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
+                                    //Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
                                     // Do something with each equipment item
+                                    db.addDevice(new Device(equipment.getId(),equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
                                 }
                             } else {
                                 // Handle errors
