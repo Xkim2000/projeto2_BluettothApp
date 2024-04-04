@@ -98,10 +98,10 @@ public class MainActivity extends AppCompatActivity {
 
         //db.getAllDevices();
 
-        Record record1 = new Record(1, "AAAAA", LocalDateTime.now(), "PRN-1");
-        Record record2 = new Record(2, "BBBBB", LocalDateTime.now(), "PRN-1");
-        Record record3 = new Record(3, "CCCCC", LocalDateTime.now(), "PRN-1");
-        Record record4 = new Record(4, "DDDDD", LocalDateTime.now(), "PRN-1");
+        Record record1 = new Record(1, "111", (LocalDateTime.now()).toString(), "PRN-1");
+        Record record2 = new Record(2, "222", (LocalDateTime.now()).toString(), "PRN-1");
+        Record record3 = new Record(3, "3333", (LocalDateTime.now()).toString(), "PRN-1");
+        Record record4 = new Record(4, "4444", (LocalDateTime.now()).toString(), "PRN-1");
 
         ArrayList<Record> records = new ArrayList<>();
         records.add(record1);

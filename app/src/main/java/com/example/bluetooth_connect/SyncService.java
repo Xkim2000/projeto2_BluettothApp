@@ -115,28 +115,12 @@ public class SyncService extends Service {
             apiClient = new EquipmentApiClient();
             ArrayList<Record> notSyncedRecords = db.getRecordNotSynced();
 
-            //TESTAR
-            ArrayList<Record_Send> notSyncedRecords_SEND = new ArrayList<>();
-            // Iterar sobre os Record originais
-            for (Record record : notSyncedRecords) {
-                // Converter o timestamp para uma string
-                String timestampAsString = record.getTimestamp().toString(); // Supondo que getTimestamp() retorna um objeto Timestamp
-
-                // Criar um novo objeto Record_Send com a timestamp em string
-                Record_Send recordSend = new Record_Send(record.getId(), record.getRecordClass(), timestampAsString, record.getDeviceId());
-
-                // Adicionar o novo objeto à lista de Record_Send
-                notSyncedRecords_SEND.add(recordSend);
-            }
-
             if (notSyncedRecords != null) {
                 Log.d(TAG, "Device has Internet !");
                 Log.d(TAG, "Syncing data...");
 
 
-
-
-                Call<Integer> call = apiClient.insertUserData(notSyncedRecords_SEND);
+                Call<Integer> call = apiClient.insertUserData(notSyncedRecords);
                 call.enqueue(new Callback<Integer>() {
                     @Override
                     public void onResponse(Call<Integer> call, Response<Integer> response) {

@@ -5,11 +5,11 @@ import java.time.LocalDateTime;
 public class Record {
     private int id;
     private String recordClass;
-    private LocalDateTime timestamp;
+    private String timestamp;
     private String deviceId;
     private boolean isSynced;
 
-    public Record(int id, String recordClass, LocalDateTime timestamp, String deviceId) {
+    public Record(int id, String recordClass, String timestamp, String deviceId) {
         setId(id);
         setRecordClass(recordClass);
         setTimestamp(timestamp);
@@ -33,11 +33,11 @@ public class Record {
         this.recordClass = recordClass;
     }
 
-    public LocalDateTime getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
     }
 

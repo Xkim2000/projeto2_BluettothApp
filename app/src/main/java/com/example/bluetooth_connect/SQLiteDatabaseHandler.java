@@ -61,7 +61,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         String CREATE_USERS_DATA_TABLE = "CREATE TABLE " + TABLE_USERS_DATA + "("
                 + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + KEY_RECORD_CLASS + " VARCHAR(30),"
-                + KEY_RECORD_TIMESTAMP + " TIMESTAMP,"
+                //+ KEY_RECORD_TIMESTAMP + " TIMESTAMP,"
+                + KEY_RECORD_TIMESTAMP + " VARCHAR(30),"
                 + KEY_RECORD_DEVICE_ID + " VARCHAR(50),"
                 + KEY_RECORD_IS_SYNCED + " BOOLEAN DEFAULT 'false'"
                 + ")";
@@ -102,14 +103,14 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                 null); // h. limit
 
         if (cursor != null && cursor.moveToFirst()) {
-            String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
+            //String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
             // Define the expected format of your string
-            LocalDateTime timestamp = parseDataToTimestamp(dateString);
+            //LocalDateTime timestamp = parseDataToTimestamp(dateString);
 
             Record record = new Record(
                     Integer.parseInt(cursor.getString(0)),
                     cursor.getString(1),
-                    timestamp,
+                    cursor.getString(2),
                     cursor.getString(3)
             );
 
@@ -140,13 +141,13 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                 null); // h. limit
 
         if (cursor != null && cursor.moveToFirst()) {
-            String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
-            LocalDateTime timestamp = parseDataToTimestamp(dateString);
+            //String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
+            //LocalDateTime timestamp = parseDataToTimestamp(dateString);
 
             Record retrievedRecord = new Record(
                     Integer.parseInt(cursor.getString(0)),
                     cursor.getString(1),
-                    timestamp,
+                    cursor.getString(2),
                     cursor.getString(3)
             );
 
@@ -181,13 +182,13 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                String dateString = cursor.getString(2);
-                LocalDateTime timestamp = parseDataToTimestamp(dateString);
+                //String dateString = cursor.getString(2);
+                //LocalDateTime timestamp = parseDataToTimestamp(dateString);
 
                 record = new Record(
                         Integer.parseInt(cursor.getString(0)),
                         cursor.getString(1),
-                        timestamp,
+                        cursor.getString(2),
                         cursor.getString(3)
                 );
                 records.add(record);
@@ -244,12 +245,12 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
             do {
                 String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
                 // Define the expected format of your string
-                LocalDateTime timestamp = parseDataToTimestamp(dateString);
+                //LocalDateTime timestamp = parseDataToTimestamp(dateString);
 
                  record = new Record(
                         Integer.parseInt(cursor.getString(0)),
                         cursor.getString(1),
-                        timestamp,
+                         cursor.getString(2),
                         cursor.getString(3)
                 );
                 records.add(record);

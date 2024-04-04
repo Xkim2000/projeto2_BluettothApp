@@ -14,5 +14,5 @@ public interface EquipmentApiService {
     Call<List<Device>> getAllEquipment();
 
     @POST("userdata")
-    Call<Integer> insertUserData(@Body List<Record_Send> records);
+    Call<Integer> insertUserData(@Body List<Record> records);
 }

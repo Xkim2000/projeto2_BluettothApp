@@ -31,7 +31,7 @@ public class EquipmentApiClient {
     }
 
     // Método para inserir dados do usuário
-    public Call<Integer> insertUserData(ArrayList<Record_Send> records) {
+    public Call<Integer> insertUserData(ArrayList<Record> records) {
         return service.insertUserData(records);
     }
 
