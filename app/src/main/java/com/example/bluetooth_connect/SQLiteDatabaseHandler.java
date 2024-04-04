@@ -63,7 +63,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                 + KEY_RECORD_CLASS + " VARCHAR(30),"
                 + KEY_RECORD_TIMESTAMP + " TIMESTAMP,"
                 + KEY_RECORD_DEVICE_ID + " VARCHAR(50),"
-                + KEY_RECORD_IS_SYNCED + " BOOLEAN"
+                + KEY_RECORD_IS_SYNCED + " BOOLEAN DEFAULT 'false'"
                 + ")";
         db.execSQL(CREATE_USERS_DATA_TABLE);
     }
@@ -160,7 +160,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
 
     private static LocalDateTime parseDataToTimestamp(String dateString) {
         // Define the expected format of your string
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
         // Parse the string to LocalDateTime
         return LocalDateTime.parse(dateString, formatter);
     }
@@ -198,6 +198,26 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         return records;
     }
 
+
+    public void updateRecord(Record record) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        // Crie um ContentValues contendo os valores a serem atualizados
+        ContentValues values = new ContentValues();
+        values.put(KEY_RECORD_IS_SYNCED, record.is_synced() ? 1 : 0); // 1 para true, 0 para false
+
+        // Especifique a cláusula WHERE para identificar o registro a ser atualizado
+        String selection = KEY_ID + " = ?";
+        String[] selectionArgs = { String.valueOf(record.getId()) };
+
+        // Atualize o registro usando a função update do SQLiteDatabase
+        db.update(TABLE_USERS_DATA, values, selection, selectionArgs);
+
+        // Feche a conexão com o banco de dados
+        db.close();
+    }
+
+
     public int deleteAlreadySynced() {
         SQLiteDatabase db = this.getWritableDatabase();
 
@@ -209,6 +229,37 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
 
         db.close();
         return  rowsDeleted;
+    }
+
+    public ArrayList<Record> getAllRecords() {
+
+        ArrayList<Record> records = new ArrayList<Record>();
+        String query = "SELECT  * FROM " + TABLE_USERS_DATA;
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+        Record record = null;
+
+        if (cursor != null && cursor.moveToFirst()) {
+
+            do {
+                String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
+                // Define the expected format of your string
+                LocalDateTime timestamp = parseDataToTimestamp(dateString);
+
+                 record = new Record(
+                        Integer.parseInt(cursor.getString(0)),
+                        cursor.getString(1),
+                        timestamp,
+                        cursor.getString(3)
+                );
+                records.add(record);
+            } while (cursor.moveToNext());
+            cursor.close();
+            return records;
+        } else {
+            // If no record found with the given id, return null
+            return null;
+        }
     }
 
     public void addDevice(Device device){

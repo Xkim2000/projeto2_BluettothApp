@@ -21,11 +21,22 @@ import androidx.core.app.NotificationCompat;
 
 import com.example.bluetooth_connect.R;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class SyncService extends Service {
     private static final String TAG = "SyncService";
     private static final long LOG_INTERVAL = 15 * 1000; // 15 seconds
     private static final int NOTIFICATION_ID = 1234;
     private static final String NOTIFICATION_CHANNEL_ID = "SyncChannel";
+
+    private SQLiteDatabaseHandler db;
+    private EquipmentApiClient apiClient;
 
     private PowerManager.WakeLock wakeLock;
     private Handler handler;
@@ -95,12 +106,67 @@ public class SyncService extends Service {
         }
     }
 
+
     private void syncData() {
         // Implement your data sync logic here
         // This could involve network calls, updating the SQLite database, etc.
         if (hasInternet()) {
-            Log.d(TAG, "Device has Internet !");
-            Log.d(TAG, "Syncing data...");
+            db = new SQLiteDatabaseHandler(this);
+            apiClient = new EquipmentApiClient();
+            ArrayList<Record> notSyncedRecords = db.getRecordNotSynced();
+
+            //TESTAR
+            ArrayList<Record_Send> notSyncedRecords_SEND = new ArrayList<>();
+            // Iterar sobre os Record originais
+            for (Record record : notSyncedRecords) {
+                // Converter o timestamp para uma string
+                String timestampAsString = record.getTimestamp().toString(); // Supondo que getTimestamp() retorna um objeto Timestamp
+
+                // Criar um novo objeto Record_Send com a timestamp em string
+                Record_Send recordSend = new Record_Send(record.getId(), record.getRecordClass(), timestampAsString, record.getDeviceId());
+
+                // Adicionar o novo objeto à lista de Record_Send
+                notSyncedRecords_SEND.add(recordSend);
+            }
+
+            if (notSyncedRecords != null) {
+                Log.d(TAG, "Device has Internet !");
+                Log.d(TAG, "Syncing data...");
+
+
+
+
+                Call<Integer> call = apiClient.insertUserData(notSyncedRecords_SEND);
+                call.enqueue(new Callback<Integer>() {
+                    @Override
+                    public void onResponse(Call<Integer> call, Response<Integer> response) {
+                        if (response.isSuccessful()) {
+                            Integer resultCode = response.body();
+                            if (resultCode != null && resultCode == 200) {
+                                // Operação bem-sucedida (código 200 OK)
+                                for (Record record : notSyncedRecords) {
+                                    record.setIsSynced(true);
+                                    db.updateRecord(record);
+                                }
+                                Log.d(TAG, "Nº Deleted Rows: " + db.deleteAlreadySynced());
+                            } else {
+                                // O servidor retornou um código diferente de 200 OK
+                                Log.d(TAG, "Erro no servidor: " + response.code());
+                            }
+                        } else {
+                            // Lidar com resposta sem sucesso
+                            Log.d(TAG, "Resposta sem sucesso: " + response.code());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<Integer> call, Throwable t) {
+                        // Lidar com falha na solicitação
+                        Log.e(TAG, "Falha na solicitação: " + t.getMessage());
+                    }
+                });
+
+            }
         } else {
             Log.d(TAG, "NO INTERNET!");
         }

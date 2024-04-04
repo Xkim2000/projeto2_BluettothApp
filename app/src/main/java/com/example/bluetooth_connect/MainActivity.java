@@ -27,6 +27,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -77,6 +79,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+
+
         instance = this;
 
         Button connectButton = findViewById(R.id.buttonStart);
@@ -92,6 +97,22 @@ public class MainActivity extends AppCompatActivity {
         //db.addDevice(deviceTest);
 
         //db.getAllDevices();
+
+        Record record1 = new Record(1, "AAAAA", LocalDateTime.now(), "PRN-1");
+        Record record2 = new Record(2, "BBBBB", LocalDateTime.now(), "PRN-1");
+        Record record3 = new Record(3, "CCCCC", LocalDateTime.now(), "PRN-1");
+        Record record4 = new Record(4, "DDDDD", LocalDateTime.now(), "PRN-1");
+
+        ArrayList<Record> records = new ArrayList<>();
+        records.add(record1);
+        records.add(record2);
+        records.add(record3);
+        records.add(record4);
+
+        for (Record record : records) {
+            db.addRecord(record);
+        }
+
 
         apiClient = new EquipmentApiClient();
 
