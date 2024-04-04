@@ -8,6 +8,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -20,8 +24,11 @@ import android.view.View;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -32,6 +39,15 @@ public class MainActivity extends AppCompatActivity {
     private SQLiteDatabaseHandler db;
 
     private EquipmentApiClient apiClient;
+
+    // Location Manager
+    private LocationManager locationManager;
+
+    Device nearestDevice;
+
+    private CountDownLatch locationLatch;
+
+    private static MainActivity instance;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -52,11 +68,16 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    public static MainActivity getInstance() {
+        return instance;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        instance = this;
 
         Button connectButton = findViewById(R.id.buttonStart);
         Button disconnectButton = findViewById(R.id.buttonStop);
@@ -73,6 +94,9 @@ public class MainActivity extends AppCompatActivity {
         //db.getAllDevices();
 
         apiClient = new EquipmentApiClient();
+
+        // Initialize Location Manager
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         // Create and start a new Thread to make the API call
         if(has_Internet()){
@@ -134,27 +158,71 @@ public class MainActivity extends AppCompatActivity {
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (bluetoothService != null && isBound) {
-                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                    if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
-                        BluetoothDevice device = bluetoothAdapter.getRemoteDevice("D8:3A:DD:36:E5:30");
 
-                        //TODO exception treatment for the connection not successfully
+                //TODO replace the code below:
 
-                        // Start a 2-second delay before connecting
-                        new Handler().postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                bluetoothService.connectToDevice(device);
-                            }
-                        }, 2000); // 2000 milliseconds = 2 seconds
-
-                    } else {
-                        Log.e(TAG, "Bluetooth adapter is not available or not enabled");
-                    }
-                } else {
-                    Log.e(TAG, "Bluetooth service not bound");
+                // Check for permissions
+                if (ActivityCompat.checkSelfPermission(MainActivity.this,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(MainActivity.this,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(MainActivity.this,
+                            new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION},
+                            1);
+                    return;
                 }
+
+                // Initialize the CountDownLatch with a count of 1
+                locationLatch = new CountDownLatch(1);
+
+                // Request a single location update
+                locationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, new LocationListener() {
+                    @Override
+                    public void onLocationChanged(Location location) {
+                        // Handle location update
+                        Location androidPhoneLocation = new Location(location);
+
+                        // Now that we have the location, find the nearest device
+                        nearestDevice = findNearestDevice(db.getAllDevices(), androidPhoneLocation);
+
+                        // Signal the CountDownLatch
+                        locationLatch.countDown();
+                    }
+
+                    @Override
+                    public void onStatusChanged(String provider, int status, Bundle extras) {
+                    }
+
+                    @Override
+                    public void onProviderEnabled(String provider) {
+                    }
+
+                    @Override
+                    public void onProviderDisabled(String provider) {
+                    }
+                }, null);
+
+                // Create a separate thread to wait for the latch and call checkLocation()
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            locationLatch.await(); // Wait until location is received
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    checkLocation();
+                                }
+                            });
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+
+
+                //makeConnection();
             }
         });
 
@@ -162,13 +230,76 @@ public class MainActivity extends AppCompatActivity {
         disconnectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 if (bluetoothService != null && isBound) {
                     bluetoothService.closeConnection();
                 } else {
                     Log.e(TAG, "Bluetooth service not bound");
                 }
+
+
             }
         });
+    }
+
+    protected void makeConnection() {
+        if (bluetoothService != null && isBound) {
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(nearestDevice.getMac());
+
+                //TODO exception treatment for the connection not successfully
+
+                // Start a 2-second delay before connecting
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        bluetoothService.connectToDevice(device);
+                    }
+                }, 2000); // 2000 milliseconds = 2 seconds
+
+            } else {
+                Log.e(TAG, "Bluetooth adapter is not available or not enabled");
+            }
+        } else {
+            Log.e(TAG, "Bluetooth service not bound");
+        }
+    }
+
+
+    private void checkLocation() {
+        double destinationLat = nearestDevice.getLatitude();
+        double destinationLng = nearestDevice.getLongitude();
+        String macAddress = nearestDevice.getMac();
+        Intent serviceIntent = new Intent(MainActivity.this, LocationForegroundService.class);
+        serviceIntent.putExtra("destinationLat", destinationLat);
+        serviceIntent.putExtra("destinationLng", destinationLng);
+        serviceIntent.putExtra("deviceMac", macAddress);
+        ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
+    }
+
+    // Method to find the nearest device
+    private Device findNearestDevice(List<Device> devices, Location location) {
+        if (devices.isEmpty()) {
+            throw new IllegalArgumentException("Device list is empty");
+        }
+
+        double minDistance = Double.MAX_VALUE;
+        Device nearestDevice = null;
+
+        for (Device device : devices) {
+            float[] results = new float[1];
+            Location.distanceBetween(location.getLatitude(), location.getLongitude(),
+                    device.getLatitude(), device.getLongitude(), results);
+            double distance = results[0];
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestDevice = device;
+            }
+        }
+
+        return nearestDevice;
     }
 
 
@@ -179,6 +310,8 @@ public class MainActivity extends AppCompatActivity {
             unbindService(serviceConnection);
             isBound = false;
         }
+        Intent serviceIntent = new Intent(this, LocationForegroundService.class);
+        stopService(serviceIntent);
     }
 
     private void startSyncService() {
