@@ -150,8 +150,9 @@ public class MainActivity extends AppCompatActivity {
         });
 */
 
-        createNotificationChannel();
+        //createNotificationChannel();
 
+        //TODO Remove startSyncService from the OnCreate
         //SYNC Service initalization
         startSyncService();
 
@@ -255,6 +256,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         bluetoothService.connectToDevice(device);
+
+                        //SYNC Service initalization
+                        startSyncService();
                     }
                 }, 2000); // 2000 milliseconds = 2 seconds
 
@@ -315,8 +319,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startSyncService() {
-        Intent serviceIntent = new Intent(this, SyncService.class);
-        startService(serviceIntent);
+        try {
+            Intent serviceIntent = new Intent(this, SyncService.class);
+            startService(serviceIntent);
+        } catch (Exception e) {
+            Log.d(TAG, "startSyncService: " + e);
+        }
     }
 
     private boolean has_Internet(){
@@ -337,16 +345,5 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Sync Service Channel";
-            String description = "Sync Service Channel Description";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel("ChannelID", name, importance);
-            channel.setDescription(description);
 
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-    }
 }

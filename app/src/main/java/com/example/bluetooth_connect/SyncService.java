@@ -1,5 +1,6 @@
 package com.example.bluetooth_connect;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
@@ -12,28 +13,37 @@ import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
-
-import android.app.Notification;
-import android.app.PendingIntent;
 import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
+import com.example.bluetooth_connect.R;
+
 public class SyncService extends Service {
     private static final String TAG = "SyncService";
+    private static final long LOG_INTERVAL = 15 * 1000; // 15 seconds
     private static final int NOTIFICATION_ID = 1234;
-    private static final long NOTIFICATION_INTERVAL = 3 * 1000; // 15 seconds
+    private static final String NOTIFICATION_CHANNEL_ID = "SyncChannel";
 
     private PowerManager.WakeLock wakeLock;
     private Handler handler;
-    private Runnable notificationRunnable;
+    private Runnable syncRunnable;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "Sync Service created");
+
+        // Create a notification channel (required for Android 8.0 and higher)
+        createNotificationChannel();
+
+        // Create a notification for Foreground Service
+        Notification notification = createNotification();
+
+        // Display the notification
+        startForeground(NOTIFICATION_ID, notification);
 
         // Acquire wake lock to keep the CPU running
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -46,26 +56,17 @@ public class SyncService extends Service {
             return;
         }
 
-        //TODO Change the part of the notification for the Sync Data function
-
-        // Create a notification for the foreground service
-        Notification notification = createNotification();
-        if (notification != null) {
-            startForeground(NOTIFICATION_ID, notification);
-        }
-
-        // Initialize Handler and Runnable for periodic notification update
+        // Initialize Handler and Runnable for periodic syncing
         handler = new Handler();
-        notificationRunnable = new Runnable() {
+        syncRunnable = new Runnable() {
             @Override
             public void run() {
-                updateNotification();
-                handler.postDelayed(this, NOTIFICATION_INTERVAL);
+                syncData();
+                handler.postDelayed(this, LOG_INTERVAL);
             }
         };
-        handler.postDelayed(notificationRunnable, NOTIFICATION_INTERVAL);
+        handler.postDelayed(syncRunnable, LOG_INTERVAL);
     }
-
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -80,73 +81,36 @@ public class SyncService extends Service {
         super.onDestroy();
         Log.d(TAG, "Sync Service destroyed");
 
+        // Stop the Foreground Service and remove the notification
+        stopForeground(true);
+
         // Release the wake lock
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
         }
 
-        // Stop the periodic notification update
-        if (handler != null && notificationRunnable != null) {
-            handler.removeCallbacks(notificationRunnable);
+        // Stop the periodic syncing
+        if (handler != null && syncRunnable != null) {
+            handler.removeCallbacks(syncRunnable);
         }
-
-        // Stop the foreground service and remove the notification
-        stopForeground(true);
     }
 
     private void syncData() {
         // Implement your data sync logic here
         // This could involve network calls, updating the SQLite database, etc.
-        if(has_Internet()){
-            Log.d(TAG,"Device has Internet !");
-            Log.d(TAG,"Syncing data...");
-        }else{
-            Log.d(TAG,"NO INTERNET!");
+        if (hasInternet()) {
+            Log.d(TAG, "Device has Internet !");
+            Log.d(TAG, "Syncing data...");
+        } else {
+            Log.d(TAG, "NO INTERNET!");
         }
 
         //TODO Make database connection
+        //TODO Verify if the records are synced or not sync
         //Log.d(TAG, "Syncing data...");
     }
 
-    private void updateNotification() {
-        //Log.d(TAG, "Updating notification...");
-        Notification notification = createNotification();
-        if (notification != null) {
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.notify(NOTIFICATION_ID, notification);
-        }
-    }
-
-    private Notification createNotification() {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
-                notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "ChannelID")
-                .setContentTitle("Sync Service")
-                .setContentText("Sync Service is running...")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentIntent(pendingIntent);
-
-        // Check if the device is running Android 8.0 (Oreo) or higher
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    "ChannelID",
-                    "Sync Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("Sync Service Channel Description");
-
-            // Register the channel with the system; you can't change the importance or other notification behaviors after this
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-
-            builder.setChannelId("ChannelID"); // Set the channel ID for Android Oreo and above
-        }
-
-        return builder.build();
-    }
-
-    private boolean has_Internet(){
+    private boolean hasInternet() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         Network activeNetwork = connectivityManager.getActiveNetwork();
 
@@ -167,5 +131,29 @@ public class SyncService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    // Create a Notification Channel (required for Android 8.0 and higher)
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Sync Channel";
+            String description = "Channel for Sync Service";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    // Create a Notification for Foreground Service
+    private Notification createNotification() {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setContentTitle("Sync Service")
+                .setContentText("This service is sending data to the cloud. Pls don't shutdown.")
+                .setSmallIcon(R.mipmap.ic_launcher); // Replace with your app's icon
+
+        return builder.build();
     }
 }
