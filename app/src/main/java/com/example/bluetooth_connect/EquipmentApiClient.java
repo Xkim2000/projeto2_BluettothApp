@@ -17,6 +17,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class EquipmentApiClient {
     private EquipmentApiService service;
 
+
     public EquipmentApiClient() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://projeto2.ddnsking.com:5001/")

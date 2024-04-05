@@ -3,8 +3,10 @@ package com.example.bluetooth_connect;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -83,7 +85,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(KEY_RECORD_CLASS, record.getRecordClass());
-        values.put(KEY_RECORD_TIMESTAMP, record.getTimestamp().toString());
+        values.put(KEY_RECORD_TIMESTAMP, record.getTimestamp());
         values.put(KEY_RECORD_DEVICE_ID, record.getDeviceId());
         values.put(KEY_RECORD_IS_SYNCED, record.is_synced());
         db.insert(TABLE_USERS_DATA,null, values);
@@ -111,7 +113,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                     Integer.parseInt(cursor.getString(0)),
                     cursor.getString(1),
                     cursor.getString(2),
-                    cursor.getString(3)
+                    cursor.getString(3),
+                    cursor.getInt(4) != 0
             );
 
             cursor.close();
@@ -148,7 +151,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                     Integer.parseInt(cursor.getString(0)),
                     cursor.getString(1),
                     cursor.getString(2),
-                    cursor.getString(3)
+                    cursor.getString(3),
+                    cursor.getInt(4) != 0
             );
 
             cursor.close();
@@ -166,58 +170,95 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         return LocalDateTime.parse(dateString, formatter);
     }
 
-    public ArrayList<Record> getRecordNotSynced(){
-        SQLiteDatabase db = this.getReadableDatabase();
-        ArrayList<Record> records = new ArrayList<Record>();
-        Record record = null;
+//    public ArrayList<Record> getRecordNotSynced(){
+//        SQLiteDatabase db = this.getReadableDatabase();
+//        ArrayList<Record> records = new ArrayList<Record>();
+//        Record record = null;
+//
+//        Cursor cursor = db.query(TABLE_USERS_DATA, // a. table
+//                COLUMNS_TABLE_RECORDS, // b. column names
+//                KEY_RECORD_IS_SYNCED + " = ?", // c. selections
+//                new String[] {String.valueOf(false)}, // d. selections args
+//                null, // e. group by
+//                null, // f. having
+//                null, // g. order by
+//                null); // h. limit
+//
+//        if (cursor != null && cursor.moveToFirst()) {
+//            do {
+//                //String dateString = cursor.getString(2);
+//                //LocalDateTime timestamp = parseDataToTimestamp(dateString);
+//
+//                record = new Record(
+//                        Integer.parseInt(cursor.getString(0)),
+//                        cursor.getString(1),
+//                        cursor.getString(2),
+//                        cursor.getString(3)
+//                );
+//                records.add(record);
+//            }while (cursor.moveToNext());
+//        }else{
+//            return null;
+//        }
+//        return records;
+//    }
 
-        Cursor cursor = db.query(TABLE_USERS_DATA, // a. table
-                COLUMNS_TABLE_RECORDS, // b. column names
-                KEY_RECORD_IS_SYNCED + " = ?", // c. selections
-                new String[] {String.valueOf(false)}, // d. selections args
-                null, // e. group by
-                null, // f. having
-                null, // g. order by
-                null); // h. limit
+    public ArrayList<Record> getRecordNotSynced() {
+        ArrayList<Record> records = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String query = "SELECT * FROM " + TABLE_USERS_DATA + " WHERE " + KEY_RECORD_IS_SYNCED + " = 0"; // 0 para falso, 1 para verdadeiro
+        Cursor cursor = db.rawQuery(query, null);
+        Record record = null;
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                //String dateString = cursor.getString(2);
-                //LocalDateTime timestamp = parseDataToTimestamp(dateString);
-
                 record = new Record(
                         Integer.parseInt(cursor.getString(0)),
                         cursor.getString(1),
                         cursor.getString(2),
-                        cursor.getString(3)
+                        cursor.getString(3),
+                        cursor.getInt(4) != 0
                 );
                 records.add(record);
-            }while (cursor.moveToNext());
-        }else{
-            return null;
+            } while (cursor.moveToNext());
+            cursor.close();
         }
         return records;
     }
 
 
-    public void updateRecord(Record record) {
+    public void updateRecordToSynced(Record record) {
         SQLiteDatabase db = this.getWritableDatabase();
+        db.beginTransaction();
 
-        // Crie um ContentValues contendo os valores a serem atualizados
-        ContentValues values = new ContentValues();
-        values.put(KEY_RECORD_IS_SYNCED, record.is_synced() ? 1 : 0); // 1 para true, 0 para false
+        try {
+            String query = "UPDATE " + TABLE_USERS_DATA +
+                    " SET " + KEY_RECORD_IS_SYNCED + " = true " +
+                    " WHERE " + KEY_ID + " = " + record.getId();
 
-        // Especifique a cláusula WHERE para identificar o registro a ser atualizado
-        String selection = KEY_ID + " = ?";
-        String[] selectionArgs = { String.valueOf(record.getId()) };
-
-        // Atualize o registro usando a função update do SQLiteDatabase
-        db.update(TABLE_USERS_DATA, values, selection, selectionArgs);
-
-        // Feche a conexão com o banco de dados
-        db.close();
+            db.execSQL(query);
+            db.setTransactionSuccessful();
+            Log.d("Database", "Record updated to synced with ID: " + record.getId());
+        } catch (SQLException e) {
+            Log.e("Database", "Error updating record: " + e.getMessage());
+        } finally {
+            db.endTransaction();
+            db.close();
+        }
     }
 
+
+    public int deleteAllRecords() {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        int rowsDeleted = db.delete(TABLE_USERS_DATA, null, null);
+        // Se preferir, pode descomentar a linha abaixo para logar a quantidade de linhas deletadas
+        // Log.d("DeleteAllRecords", "Deleted " + rowsDeleted + " rows");
+
+        db.close();
+        return rowsDeleted;
+    }
 
     public int deleteAlreadySynced() {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -243,7 +284,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         if (cursor != null && cursor.moveToFirst()) {
 
             do {
-                String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
+                //String dateString = cursor.getString(2); // Assuming this is your string representation of LocalDateTime
                 // Define the expected format of your string
                 //LocalDateTime timestamp = parseDataToTimestamp(dateString);
 
@@ -251,7 +292,8 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
                         Integer.parseInt(cursor.getString(0)),
                         cursor.getString(1),
                          cursor.getString(2),
-                        cursor.getString(3)
+                        cursor.getString(3),
+                         cursor.getInt(4) != 0
                 );
                 records.add(record);
             } while (cursor.moveToNext());
