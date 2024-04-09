@@ -27,6 +27,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -93,6 +95,36 @@ public class MainActivity extends AppCompatActivity {
 
         //db.getAllDevices();
 
+
+
+        Record record1 = new Record(1, "b1", "2024-04-05 19:00:02", "PRN-1",false);
+        Record record2 = new Record(2, "b2", "2024-04-05 19:00:02", "PRN-1",false);
+        Record record3 = new Record(3, "b3", "2024-04-05 19:00:02", "PRN-1",false);
+        Record record4 = new Record(4, "b4",  "2024-04-05 17:52:51", "PRN-1",false);
+
+        ArrayList<Record> records = new ArrayList<>();
+        records.add(record1);
+        records.add(record2);
+        records.add(record3);
+        records.add(record4);
+
+
+        db.deleteAllRecords();
+        for (Record record : records) {
+            db.addRecord(record);
+            Log.d(TAG, "Record: "+ record.toString());
+        }
+
+//        Log.d(TAG, "getAllRecords");
+//        for (Record r: db.getAllRecords()){
+//            Log.d(TAG, "Record: "+ r.toString());
+//        }
+
+//        db.deleteAllRecords();
+//        for (Record r: db.getAllRecords()){
+//            Log.d(TAG, "Record: "+ r.toString());
+//        }
+
         apiClient = new EquipmentApiClient();
 
         // Initialize Location Manager
@@ -152,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
 
         //createNotificationChannel();
 
-        //TODO Remove startSyncService from the OnCreate
+        //TODO Remove startSyncService from the OnCreate, move after receving new data.
         //SYNC Service initalization
         startSyncService();
 

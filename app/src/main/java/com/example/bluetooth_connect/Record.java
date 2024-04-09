@@ -5,16 +5,16 @@ import java.time.LocalDateTime;
 public class Record {
     private int id;
     private String recordClass;
-    private LocalDateTime timestamp;
+    private String timestamp;
     private String deviceId;
     private boolean isSynced;
 
-    public Record(int id, String recordClass, LocalDateTime timestamp, String deviceId) {
+    public Record(int id, String recordClass, String timestamp, String deviceId, boolean isSynced) {
         setId(id);
         setRecordClass(recordClass);
         setTimestamp(timestamp);
         setDeviceId(deviceId);
-        setIsSynced(false);
+        setIsSynced(isSynced);
     }
 
     public int getId() {
@@ -33,11 +33,11 @@ public class Record {
         this.recordClass = recordClass;
     }
 
-    public LocalDateTime getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
     }
 
@@ -55,5 +55,16 @@ public class Record {
 
     public void setIsSynced(boolean is_synced) {
         this.isSynced = is_synced;
+    }
+
+    @Override
+    public String toString() {
+        return "Record{" +
+                "id=" + id +
+                ", recordClass='" + recordClass + '\'' +
+                ", timestamp='" + timestamp + '\'' +
+                ", deviceId='" + deviceId + '\'' +
+                ", isSynced=" + isSynced +
+                '}';
     }
 }
