@@ -239,7 +239,7 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
 
             db.execSQL(query);
             db.setTransactionSuccessful();
-            Log.d("Database", "Record updated to synced with ID: " + record.getId());
+            //Log.d("Database", "Record updated to synced with ID: " + record.getId());
         } catch (SQLException e) {
             Log.e("Database", "Error updating record: " + e.getMessage());
         } finally {

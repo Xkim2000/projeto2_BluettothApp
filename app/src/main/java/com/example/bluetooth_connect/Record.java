@@ -9,6 +9,14 @@ public class Record {
     private String deviceId;
     private boolean isSynced;
 
+    public Record(String recordClass, String timestamp, String deviceId, boolean isSynced) {
+        setId(id);
+        setRecordClass(recordClass);
+        setTimestamp(timestamp);
+        setDeviceId(deviceId);
+        setIsSynced(isSynced);
+    }
+
     public Record(int id, String recordClass, String timestamp, String deviceId, boolean isSynced) {
         setId(id);
         setRecordClass(recordClass);
