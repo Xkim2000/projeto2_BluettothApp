@@ -104,9 +104,9 @@ public class BluetoothService extends Service {
             }
 
             Log.d(TAG, "Connected to device: " + device.getName());
-//            Log.d(TAG, "DESTRUI O SERVICO");
-//            Intent serviceIntent = new Intent(this, LocationForegroundService.class);
-//            stopService(serviceIntent);
+            Log.d(TAG, "DESTRUI O SERVICO");
+            Intent serviceIntent = new Intent(this, LocationForegroundService.class);
+            stopService(serviceIntent);
             byte[] bytesToSend = uuid.toString().getBytes();
             sendData(bytesToSend);
 
