@@ -32,6 +32,7 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.UUID;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -96,7 +97,10 @@ public class BluetoothService extends Service {
                 bytesCount = mInputStream.read(buffer);
                 if (bytesCount > 0) {
                     // Convert received bytes to PublicKey
-                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(buffer));
+                    byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
+                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
+                    //String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+                    //System.out.println(publicKeyString);
                 }
             }
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
@@ -110,6 +114,17 @@ public class BluetoothService extends Service {
         }
 
         return serverPublicKey;
+    }
+
+    private byte[] decodePEM(String pemKey) {
+        String[] parts = pemKey.split("\n");
+        StringBuilder pemBuilder = new StringBuilder();
+        for (String part : parts) {
+            if (!part.startsWith("-----")) {
+                pemBuilder.append(part.trim());
+            }
+        }
+        return Base64.getDecoder().decode(pemBuilder.toString());
     }
 
     // Generate shared secret
@@ -181,6 +196,7 @@ public class BluetoothService extends Service {
 
                     generateKeyPair();
                     sendPublicKey();
+                    Log.d(TAG, "CHEGUEI");
                     receiveServerPublicKey();
                     generateSharedSecret();
 
