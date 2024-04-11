@@ -28,7 +28,14 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.PublicKey;
 import java.util.UUID;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.PrivateKey;
+import javax.crypto.KeyAgreement;
 
 public class BluetoothService extends Service {
     private static final String TAG = "BluetoothService";
@@ -47,7 +54,50 @@ public class BluetoothService extends Service {
     public BluetoothService() {
         Log.e(TAG, "BluetoothBinder created");
     }
+//////////////////////////////
+    private PublicKey serverPublicKey; // Store server's public key
 
+    // Generate RSA key pair
+    private KeyPair generateKeyPair() throws NoSuchAlgorithmException {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+        keyPairGenerator.initialize(2048); // Key size
+        return keyPairGenerator.generateKeyPair();
+    }
+
+    // Send public key to server
+    private void sendPublicKey() {
+        try {
+            KeyPair keyPair = generateKeyPair();
+            PublicKey publicKey = keyPair.getPublic();
+            byte[] publicKeyBytes = publicKey.getEncoded();
+            // Send publicKeyBytes to server
+            // Example: sendData(publicKeyBytes);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Receive server's public key
+    public void receiveServerPublicKey(byte[] publicKeyBytes) {
+        // Convert received bytes to PublicKey
+        // Example: serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKeyBytes));
+    }
+
+    // Generate shared secret
+    private byte[] generateSharedSecret() {
+        try {
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
+            keyAgreement.init(keyPair.getPrivate()); // Use app's private key
+            keyAgreement.doPhase(serverPublicKey, true);
+            return keyAgreement.generateSecret();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+///////////////////////////////
     @Override
     public void onCreate() {
         super.onCreate();
@@ -118,31 +168,39 @@ public class BluetoothService extends Service {
 
 
     public void sendData(byte[] bytes) {
-        try {
-            mOutputStream.write(bytes);
+        byte[] sharedSecret = generateSharedSecret();
+        if (sharedSecret != null) {
+            // Encrypt data using sharedSecret
+            // Example: byte[] encryptedData = encrypt(bytes, sharedSecret);
+            // Send encryptedData to server
+            //TODO
+            try {
 
-            // Wait for confirmation
-            boolean confirmationReceived = receiveConfirmation();
+                mOutputStream.write(bytes);
 
-            if (confirmationReceived) {
-                System.out.println("Message sent and confirmation received!");
-                //showToast("Message sent and confirmation received!");
-                sendReadyForDataMessage();
-                receiveBufferSize();
-                if(bufferSize != 0){
-                    if(receiveDataJSON()){
-                        MainActivity.getInstance().startSyncService();
+                // Wait for confirmation
+                boolean confirmationReceived = receiveConfirmation();
+
+                if (confirmationReceived) {
+                    System.out.println("Message sent and confirmation received!");
+                    //showToast("Message sent and confirmation received!");
+                    sendReadyForDataMessage();
+                    receiveBufferSize();
+                    if(bufferSize != 0){
+                        if(receiveDataJSON()){
+                            MainActivity.getInstance().startSyncService();
+                        }
                     }
+
+                } else {
+                    System.out.println("Confirmation not received. Message may not have been delivered.");
+                    //showToast("Confirmation not received. Message may not have been delivered.");
+                    closeConnection();
                 }
 
-            } else {
-                System.out.println("Confirmation not received. Message may not have been delivered.");
-                //showToast("Confirmation not received. Message may not have been delivered.");
-                closeConnection();
+            } catch (IOException e) {
+                // Handle error
             }
-
-        } catch (IOException e) {
-            // Handle error
         }
     }
 
