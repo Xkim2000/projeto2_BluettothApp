@@ -40,7 +40,7 @@ public class BluetoothService extends Service {
     private OutputStream mOutputStream;
     private UUID uuid;
 
-    private int bufferSize;
+    private int bufferSize = 0;
 
     private SQLiteDatabaseHandler db;
 
@@ -104,6 +104,9 @@ public class BluetoothService extends Service {
             }
 
             Log.d(TAG, "Connected to device: " + device.getName());
+//            Log.d(TAG, "DESTRUI O SERVICO");
+//            Intent serviceIntent = new Intent(this, LocationForegroundService.class);
+//            stopService(serviceIntent);
             byte[] bytesToSend = uuid.toString().getBytes();
             sendData(bytesToSend);
 
@@ -125,8 +128,11 @@ public class BluetoothService extends Service {
                 System.out.println("Message sent and confirmation received!");
                 //showToast("Message sent and confirmation received!");
                 sendReadyForDataMessage();
-                if(receiveDataJSON()){
-                    MainActivity.getInstance().startSyncService();
+                receiveBufferSize();
+                if(bufferSize != 0){
+                    if(receiveDataJSON()){
+                        MainActivity.getInstance().startSyncService();
+                    }
                 }
 
             } else {
@@ -158,19 +164,8 @@ public class BluetoothService extends Service {
                 if (bytesCount > 0) {
                     String receivedData = new String(buffer, 0, bytesCount);
                     // Check for confirmation message
-                    if (receivedData.startsWith("ConfirmationMessage")) {
+                    if (receivedData.equals("ConfirmationMessage")) {
                         confirmationReceived = true;
-                        try {
-                            int bytesExpected = Integer.parseInt(receivedData.substring("ConfirmationMessage".length()));
-                            confirmationReceived = true;
-                            // Faça o que for necessário com o número de bytes esperados
-
-                            bufferSize = bytesExpected;
-
-                        } catch (NumberFormatException | IndexOutOfBoundsException e) {
-                            // Lidar com uma situação onde o número não pôde ser extraído ou convertido para um inteiro
-                            e.printStackTrace();
-                        }
                     }
                 }
             }
@@ -185,6 +180,27 @@ public class BluetoothService extends Service {
         }
 
         return confirmationReceived;
+    }
+
+    public void receiveBufferSize() {
+        byte[] buffer = new byte[1024];
+        int bytesCount;
+        long startTime = System.currentTimeMillis();
+
+        try {
+            while ( System.currentTimeMillis() - startTime < 2000) { // 2 seconds
+                // Read from input stream
+                bytesCount = mInputStream.read(buffer);
+                if (bytesCount > 0) {
+                    String receivedData = new String(buffer, 0, bytesCount);
+                    // Check for confirmation message
+                    bufferSize = Integer.parseInt(receivedData);
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            // Handle error
+        }
     }
 
     public boolean receiveDataJSON() {

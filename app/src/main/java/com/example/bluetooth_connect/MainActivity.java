@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private CountDownLatch locationLatch;
 
     private static MainActivity instance;
+    private static Intent serviceIntent;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -91,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, BluetoothService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
+        serviceIntent = new Intent(this, LocationForegroundService.class);
 
         db = new SQLiteDatabaseHandler(this);
 
@@ -221,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }).start();
 
-
+                stopService(serviceIntent);
                 //makeConnection();
             }
         });
@@ -274,11 +276,12 @@ public class MainActivity extends AppCompatActivity {
         double destinationLat = nearestDevice.getLatitude();
         double destinationLng = nearestDevice.getLongitude();
         String macAddress = nearestDevice.getMac();
-        Intent serviceIntent = new Intent(MainActivity.this, LocationForegroundService.class);
+
         serviceIntent.putExtra("destinationLat", destinationLat);
         serviceIntent.putExtra("destinationLng", destinationLng);
         serviceIntent.putExtra("deviceMac", macAddress);
-        ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
+        ContextCompat.startForegroundService(this, serviceIntent);
+
     }
 
     // Method to find the nearest device
@@ -301,7 +304,6 @@ public class MainActivity extends AppCompatActivity {
                 nearestDevice = device;
             }
         }
-
         return nearestDevice;
     }
 
@@ -313,7 +315,6 @@ public class MainActivity extends AppCompatActivity {
             unbindService(serviceConnection);
             isBound = false;
         }
-        Intent serviceIntent = new Intent(this, LocationForegroundService.class);
         stopService(serviceIntent);
     }
 
