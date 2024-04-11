@@ -118,33 +118,6 @@ public class SyncService extends Service {
 
                 Call<Integer> call = apiClient.insertUserData(notSyncedRecords);
 
-//                try {
-//                    // Executa a chamada de forma síncrona
-//                    int code = call.execute().code();
-//
-//                    if (code >= 200 && code <= 299) {
-//                        // Código de resposta 200-299 indica sucesso
-//                        System.out.println("Registros adicionados com sucesso na API remota!");
-//                        Log.d(TAG, "Registros adicionados com sucesso na API remota!");
-//                    } else {
-//                        // Código de resposta diferente de 200-299 indica falha
-//                        System.out.println("Falha ao adicionar registros na API remota. Código de resposta: " + code);
-//                        Log.d(TAG, "Falha ao adicionar registros na API remota. Código de resposta: " + code);
-//                    }
-//                } catch (IOException e) {
-//                    // Caso ocorra uma exceção durante a chamada
-//                    System.out.println("Erro ao adicionar registros na API remota: " + e.getMessage());
-//                    Log.d(TAG, "Erro ao adicionar registros na API remota: " + e.getMessage());
-//                    e.printStackTrace(); // Imprime o stack trace da exceção para fins de depuração
-//                }
-
-                // Adicione um atraso de 5 segundos antes de prosseguir
-//                try {
-//                    Thread.sleep(5000); // 5 segundos
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-
                 call.enqueue(new Callback<Integer>() {
                     @Override
                     public void onResponse(Call<Integer> call, Response<Integer> response) {
@@ -169,41 +142,10 @@ public class SyncService extends Service {
                     @Override
                     public void onFailure(Call<Integer> call, Throwable t) {
                         // Caso ocorra uma exceção durante a chamada
-                        System.out.println("Erro ao adicionar registros: " + t.getMessage());
+                        //System.out.println("Erro ao adicionar registros: " + t.getMessage());
                         Log.d(TAG, "Erro ao adicionar registros: " + t.getMessage());
                     }
                 });
-
-
-//                call.enqueue(new Callback<Integer>() {
-//                    @Override
-//                    public void onResponse(Call<Integer> call, Response<Integer> response) {
-//                        if (response.isSuccessful()) {
-//                            Toast.makeText(MainActivity.getInstance(), "Conseguiu",Toast.LENGTH_LONG).show();
-//                            Integer resultCode = response.body();
-//                            if (resultCode != null && resultCode == 200) {
-//                                // Operação bem-sucedida (código 200 OK)
-//                                for (Record record : notSyncedRecords) {
-//                                    record.setIsSynced(true);
-//                                    db.updateRecord(record);
-//                                }
-//                                Log.d(TAG, "Nº Deleted Rows: " + db.deleteAlreadySynced());
-//                            } else {
-//                                // O servidor retornou um código diferente de 200 OK
-//                                Log.d(TAG, "Erro no servidor: " + response.code());
-//                            }
-//                        } else {
-//                            // Lidar com resposta sem sucesso
-//                            Log.d(TAG, "Resposta sem sucesso: " + response.code());
-//                        }
-//                    }
-//
-//                    @Override
-//                    public void onFailure(Call<Integer> call, Throwable t) {
-//                        // Lidar com falha na solicitação
-//                        Log.e(TAG, "Falha na solicitação: " + t.getMessage());
-//                    }
-//                });
 
             }
         } else {
