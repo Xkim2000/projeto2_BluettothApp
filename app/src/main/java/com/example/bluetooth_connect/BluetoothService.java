@@ -28,7 +28,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.KeyFactory;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.UUID;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -50,6 +53,7 @@ public class BluetoothService extends Service {
     private int bufferSize = 0;
 
     private SQLiteDatabaseHandler db;
+    KeyPair keyPair;
 
     public BluetoothService() {
         Log.e(TAG, "BluetoothBinder created");
@@ -67,20 +71,45 @@ public class BluetoothService extends Service {
     // Send public key to server
     private void sendPublicKey() {
         try {
-            KeyPair keyPair = generateKeyPair();
+            keyPair = generateKeyPair();
             PublicKey publicKey = keyPair.getPublic();
             byte[] publicKeyBytes = publicKey.getEncoded();
             // Send publicKeyBytes to server
-            // Example: sendData(publicKeyBytes);
+            mOutputStream.write(publicKeyBytes);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    // Receive server's public key
-    public void receiveServerPublicKey(byte[] publicKeyBytes) {
-        // Convert received bytes to PublicKey
-        // Example: serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKeyBytes));
+    // Receive server's public key with a timeout of 2 seconds
+    public PublicKey receiveServerPublicKey() {
+        PublicKey serverPublicKey = null;
+        byte[] buffer = new byte[2048]; // key size
+        int bytesCount;
+        long startTime = System.currentTimeMillis();
+
+        try {
+            while (serverPublicKey == null && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
+                // Read from input stream
+                bytesCount = mInputStream.read(buffer);
+                if (bytesCount > 0) {
+                    // Convert received bytes to PublicKey
+                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(buffer));
+                }
+            }
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            // Handle error
+            e.printStackTrace();
+        }
+
+        if (serverPublicKey == null) {
+            // Handle timeout here
+            System.out.println("Timeout: Server's public key not received.");
+        }
+
+        return serverPublicKey;
     }
 
     // Generate shared secret
@@ -103,6 +132,7 @@ public class BluetoothService extends Service {
         super.onCreate();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
     }
 
     public class BluetoothBinder extends Binder implements CustomBinder {
@@ -148,8 +178,16 @@ public class BluetoothService extends Service {
                     //System.out.println("Estou conectado !!");
                     mInputStream = mBluetoothSocket.getInputStream();
                     mOutputStream = mBluetoothSocket.getOutputStream();
+
+                    generateKeyPair();
+                    sendPublicKey();
+                    receiveServerPublicKey();
+                    generateSharedSecret();
+
                 } catch (IOException e) {
                     // Handle error
+                } catch (NoSuchAlgorithmException e) {
+                    throw new RuntimeException(e);
                 }
             }
 
