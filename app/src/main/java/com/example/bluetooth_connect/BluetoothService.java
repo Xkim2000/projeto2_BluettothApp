@@ -127,18 +127,6 @@ public class BluetoothService extends Service {
         return Base64.getDecoder().decode(pemBuilder.toString());
     }
 
-    // Generate shared secret
-    private byte[] generateSharedSecret() {
-        try {
-            KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
-            keyAgreement.init(keyPair.getPrivate()); // Use app's private key
-            keyAgreement.doPhase(serverPublicKey, true);
-            return keyAgreement.generateSecret();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
 
 ///////////////////////////////
@@ -196,9 +184,7 @@ public class BluetoothService extends Service {
 
                     generateKeyPair();
                     sendPublicKey();
-                    Log.d(TAG, "CHEGUEI");
                     receiveServerPublicKey();
-                    generateSharedSecret();
 
                 } catch (IOException e) {
                     // Handle error
@@ -222,41 +208,35 @@ public class BluetoothService extends Service {
 
 
     public void sendData(byte[] bytes) {
-        byte[] sharedSecret = generateSharedSecret();
-        if (sharedSecret != null) {
-            // Encrypt data using sharedSecret
-            // Example: byte[] encryptedData = encrypt(bytes, sharedSecret);
-            // Send encryptedData to server
-            //TODO
-            try {
+        try {
 
-                mOutputStream.write(bytes);
+            mOutputStream.write(bytes);
 
-                // Wait for confirmation
-                boolean confirmationReceived = receiveConfirmation();
+            // Wait for confirmation
+            boolean confirmationReceived = receiveConfirmation();
 
-                if (confirmationReceived) {
-                    System.out.println("Message sent and confirmation received!");
-                    //showToast("Message sent and confirmation received!");
-                    sendReadyForDataMessage();
-                    receiveBufferSize();
-                    if(bufferSize != 0){
-                        if(receiveDataJSON()){
-                            MainActivity.getInstance().startSyncService();
-                        }
+            if (confirmationReceived) {
+                System.out.println("Message sent and confirmation received!");
+                //showToast("Message sent and confirmation received!");
+                sendReadyForDataMessage();
+                receiveBufferSize();
+                if(bufferSize != 0){
+                    if(receiveDataJSON()){
+                        MainActivity.getInstance().startSyncService();
                     }
-
-                } else {
-                    System.out.println("Confirmation not received. Message may not have been delivered.");
-                    //showToast("Confirmation not received. Message may not have been delivered.");
-                    closeConnection();
                 }
 
-            } catch (IOException e) {
-                // Handle error
+            } else {
+                System.out.println("Confirmation not received. Message may not have been delivered.");
+                //showToast("Confirmation not received. Message may not have been delivered.");
+                closeConnection();
             }
+
+        } catch (IOException e) {
+            // Handle error
         }
     }
+
 
     private void sendReadyForDataMessage() throws IOException {
         String ready = "Ready for data";
