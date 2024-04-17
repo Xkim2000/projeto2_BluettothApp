@@ -27,6 +27,7 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.UUID;
 import java.security.KeyPair;
@@ -39,6 +40,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class BluetoothService extends Service {
     private static final String TAG = "BluetoothService";
@@ -98,7 +100,7 @@ public class BluetoothService extends Service {
                     byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
                     serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
                     String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
-                    System.out.println(publicKeyString);
+                    //System.out.println(publicKeyString);
                 }
             }
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
@@ -145,8 +147,8 @@ public class BluetoothService extends Service {
     public byte[] getEncryptedAESKey(SecretKey aesKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
         String encodedKey = Base64.getEncoder().encodeToString(aesKey.getEncoded());
-        System.out.println(encodedKey);
-        System.out.println(encodedKey.length());
+//        System.out.println(encodedKey);
+//        System.out.println(encodedKey.length());
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
@@ -155,16 +157,17 @@ public class BluetoothService extends Service {
         //System.out.println(Arrays.toString(encryptedKey));
         String base64Key = Base64.getEncoder().encodeToString(encryptedKey);
         // Print the Base64 encoded string
-        System.out.println("Encrypted Key (Base64):");
-        System.out.println(base64Key);
+//        System.out.println("Encrypted Key (Base64):");
+//        System.out.println(base64Key);
 
         // Send encryptedKey to server
         //mOutputStream.write(encryptedKey);
         return encryptedKey;
     }
 
-    public void sendDataEncryptedWithAES(SecretKey aesKey, String data) {
+    public void sendDataEncryptedWithAES(String data) {
         try {
+            SecretKey aesKey = generateAESKey();
             byte[] encryptedKey = getEncryptedAESKey(aesKey);
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
             cipher.init(Cipher.ENCRYPT_MODE, aesKey);
@@ -185,6 +188,55 @@ public class BluetoothService extends Service {
         return merged;
     }
 
+    // Método para receber os dados criptografados do cliente
+    public void receiveDataEncryptedWithAES() {
+        try {
+            byte[] encryptedData = new byte[2048]; // Tamanho máximo dos dados criptografados
+            int bytesRead = mInputStream.read(encryptedData);
+            if (bytesRead == -1) {
+                // Não há dados para ler
+                return;
+            }
+
+
+
+            // Separar a chave AES e os dados criptografados
+            byte[] encryptedAesKey = Arrays.copyOfRange(encryptedData, 0, 256);
+            byte[] encryptedDataOnly = Arrays.copyOfRange(encryptedData, 256, bytesRead);
+
+            // Descriptografar a chave AES usando a chave privada RSA
+            // Criar uma instância da chave AES
+            SecretKey aesKey = decryptAesKey(encryptedAesKey);
+            //Log.d(TAG, "aesEncodedKey: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+
+
+            // Descriptografar os dados usando a chave AES
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
+            cipher.init(Cipher.DECRYPT_MODE, aesKey);
+            byte[] decryptedData = cipher.doFinal(encryptedDataOnly);
+
+            // Exibir os dados descriptografados
+            //System.out.println("Decrypted data: " + new String(decryptedData, StandardCharsets.UTF_8));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private SecretKeySpec decryptAesKey(byte[] encryptedAesKey) {
+        try {
+            // Criar um objeto Cipher para descriptografar com RSA
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+
+            // Descriptografar a chave AES
+            byte[] aesKeyBytes = cipher.doFinal(encryptedAesKey);
+            return new SecretKeySpec(aesKeyBytes, "AES");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     ///////////////////////////////
     @Override
@@ -239,21 +291,23 @@ public class BluetoothService extends Service {
                     mInputStream = mBluetoothSocket.getInputStream();
                     mOutputStream = mBluetoothSocket.getOutputStream();
 
+                    //Public keys Exchange
                     generateKeyPair();
                     sendPublicKey();
                     receiveServerPublicKey();
-
                     ///////////////////////
 
-                    // Generate AES key
-                    SecretKey aesKey = generateAESKey();
-
-                    // Send the AES key encrypted with RSA public key
-                    //getEncryptedAESKey(aesKey);
+                    //Data Exchange
+                    sendDataEncryptedWithAES(uuid.toString());
+                    //Receive confirmation message
+                    receiveDataEncryptedWithAES();
 
                     // Send data encrypted with AES
-                    String data = "MERDA!!!";
-                    sendDataEncryptedWithAES(aesKey, data);
+                    //TODO send READY FOR DATA
+                    sendDataEncryptedWithAES("Ready for data");
+
+                    //TODO Receive the buffer size
+                    ///////////////////////
 
                 } catch (IOException e) {
                     // Handle error
@@ -266,8 +320,8 @@ public class BluetoothService extends Service {
             Log.d(TAG, "DESTRUI O SERVICO");
             Intent serviceIntent = new Intent(this, LocationForegroundService.class);
             stopService(serviceIntent);
-            byte[] bytesToSend = uuid.toString().getBytes();
-            sendData(bytesToSend);
+//            byte[] bytesToSend = uuid.toString().getBytes();
+//            sendData(bytesToSend);
 
         } catch (IOException e) {
             Log.e(TAG, "Connection failed: " + e.getMessage());
@@ -416,31 +470,6 @@ public class BluetoothService extends Service {
         }
 
         return dataReceived;
-    }
-
-
-    public void receiveData() {
-        if (mInputStream == null) {
-            Log.e(TAG, "Input stream is not initialized");
-            return;
-        }
-
-        byte[] buffer = new byte[1024];
-        int bytes;
-
-        while (true) {
-            try {
-                bytes = mInputStream.read(buffer);
-                if (bytes > 0) {
-                    String receivedData = new String(buffer, 0, bytes);
-                    Log.d(TAG, "Received data: " + receivedData);
-                    // Handle received data as needed
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error reading from input stream: " + e.getMessage());
-                break;
-            }
-        }
     }
 
     public void closeConnection() {
