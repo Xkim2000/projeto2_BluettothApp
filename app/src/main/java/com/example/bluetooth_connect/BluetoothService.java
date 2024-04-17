@@ -1,13 +1,9 @@
 package com.example.bluetooth_connect;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 
@@ -16,9 +12,6 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
@@ -28,6 +21,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
@@ -37,9 +32,13 @@ import java.util.UUID;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.security.PrivateKey;
-import javax.crypto.KeyAgreement;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 
 public class BluetoothService extends Service {
     private static final String TAG = "BluetoothService";
@@ -86,7 +85,6 @@ public class BluetoothService extends Service {
 
     // Receive server's public key with a timeout of 2 seconds
     public PublicKey receiveServerPublicKey() {
-        PublicKey serverPublicKey = null;
         byte[] buffer = new byte[2048]; // key size
         int bytesCount;
         long startTime = System.currentTimeMillis();
@@ -99,8 +97,8 @@ public class BluetoothService extends Service {
                     // Convert received bytes to PublicKey
                     byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
                     serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
-                    //String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
-                    //System.out.println(publicKeyString);
+                    String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+                    System.out.println(publicKeyString);
                 }
             }
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
@@ -126,10 +124,69 @@ public class BluetoothService extends Service {
         }
         return Base64.getDecoder().decode(pemBuilder.toString());
     }
-
-
-
 ///////////////////////////////
+
+    public static SecretKey generateAESKey() {
+        try {
+            // Create a KeyGenerator object for AES
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+
+            // Initialize the KeyGenerator with the specified key size
+            keyGen.init(256);
+
+            return keyGen.generateKey();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // Send the AES key encrypted with RSA public key
+    public byte[] getEncryptedAESKey(SecretKey aesKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+
+        String encodedKey = Base64.getEncoder().encodeToString(aesKey.getEncoded());
+        System.out.println(encodedKey);
+        System.out.println(encodedKey.length());
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
+        byte[] encryptedKey = cipher.doFinal(aesKey.getEncoded());
+
+        //System.out.println(Arrays.toString(encryptedKey));
+        String base64Key = Base64.getEncoder().encodeToString(encryptedKey);
+        // Print the Base64 encoded string
+        System.out.println("Encrypted Key (Base64):");
+        System.out.println(base64Key);
+
+        // Send encryptedKey to server
+        //mOutputStream.write(encryptedKey);
+        return encryptedKey;
+    }
+
+    public void sendDataEncryptedWithAES(SecretKey aesKey, String data) {
+        try {
+            byte[] encryptedKey = getEncryptedAESKey(aesKey);
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey);
+            byte[] encryptedData = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+
+            byte[] encryptedAESAndData = mergeArrays(encryptedKey, encryptedData);
+            // Send encryptedData to server
+            mOutputStream.write(encryptedAESAndData);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static byte[] mergeArrays(byte[] array1, byte[] array2) {
+        byte[] merged = new byte[array1.length + array2.length];
+        System.arraycopy(array1, 0, merged, 0, array1.length);
+        System.arraycopy(array2, 0, merged, array1.length, array2.length);
+        return merged;
+    }
+
+
+    ///////////////////////////////
     @Override
     public void onCreate() {
         super.onCreate();
@@ -185,6 +242,18 @@ public class BluetoothService extends Service {
                     generateKeyPair();
                     sendPublicKey();
                     receiveServerPublicKey();
+
+                    ///////////////////////
+
+                    // Generate AES key
+                    SecretKey aesKey = generateAESKey();
+
+                    // Send the AES key encrypted with RSA public key
+                    //getEncryptedAESKey(aesKey);
+
+                    // Send data encrypted with AES
+                    String data = "MERDA!!!";
+                    sendDataEncryptedWithAES(aesKey, data);
 
                 } catch (IOException e) {
                     // Handle error
