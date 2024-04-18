@@ -78,15 +78,18 @@ public class BluetoothService extends Service {
             byte[] publicKeyBytes = publicKey.getEncoded();
             // Send publicKeyBytes to server
             mOutputStream.write(publicKeyBytes);
+            MainActivity.appendToLogTextView("Public key ENVIADA.");
         } catch (NoSuchAlgorithmException e) {
+            MainActivity.appendToLogTextView("Public key NÃO ENVIADA.");
             e.printStackTrace();
         } catch (IOException e) {
+            MainActivity.appendToLogTextView("Public key NÃO ENVIADA.");
             throw new RuntimeException(e);
         }
     }
 
     // Receive server's public key with a timeout of 2 seconds
-    public PublicKey receiveServerPublicKey() {
+    public void receiveServerPublicKey() {
         byte[] buffer = new byte[2048]; // key size
         int bytesCount;
         long startTime = System.currentTimeMillis();
@@ -101,9 +104,11 @@ public class BluetoothService extends Service {
                     serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
                     String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
                     //System.out.println(publicKeyString);
+                    MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
                 }
             }
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
             // Handle error
             e.printStackTrace();
         }
@@ -113,7 +118,6 @@ public class BluetoothService extends Service {
             System.out.println("Timeout: Server's public key not received.");
         }
 
-        return serverPublicKey;
     }
 
     private byte[] decodePEM(String pemKey) {
@@ -177,6 +181,7 @@ public class BluetoothService extends Service {
             // Send encryptedData to server
             mOutputStream.write(encryptedAESAndData);
         } catch (Exception e) {
+            MainActivity.appendToLogTextView("Dados encriptados NÃO enviados.");
             e.printStackTrace();
         }
     }
@@ -198,8 +203,6 @@ public class BluetoothService extends Service {
                 return;
             }
 
-
-
             // Separar a chave AES e os dados criptografados
             byte[] encryptedAesKey = Arrays.copyOfRange(encryptedData, 0, 256);
             byte[] encryptedDataOnly = Arrays.copyOfRange(encryptedData, 256, bytesRead);
@@ -214,11 +217,15 @@ public class BluetoothService extends Service {
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, aesKey);
             byte[] decryptedData = cipher.doFinal(encryptedDataOnly);
+            //TODO return the decrypted data for use.
 
             // Exibir os dados descriptografados
             //System.out.println("Decrypted data: " + new String(decryptedData, StandardCharsets.UTF_8));
 
+            MainActivity.appendToLogTextView("Dados foram recebidos e desencriptados.");
+
         } catch (Exception e) {
+            MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
             e.printStackTrace();
         }
     }
@@ -231,8 +238,10 @@ public class BluetoothService extends Service {
 
             // Descriptografar a chave AES
             byte[] aesKeyBytes = cipher.doFinal(encryptedAesKey);
+            MainActivity.appendToLogTextView("Chave AES recebida foi desencriptada");
             return new SecretKeySpec(aesKeyBytes, "AES");
         } catch (Exception e) {
+            MainActivity.appendToLogTextView("Chave AES recebida NÃO foi desencriptada");
             e.printStackTrace();
             return null;
         }
@@ -285,6 +294,7 @@ public class BluetoothService extends Service {
             }
 
             if (mBluetoothSocket != null && mBluetoothSocket.isConnected()) {
+                MainActivity.appendToLogTextView("Bluetooth conectado com o dispositivo.");
                 // Socket is connected, now we can obtain our IO streams
                 try {
                     //System.out.println("Estou conectado !!");
@@ -292,27 +302,27 @@ public class BluetoothService extends Service {
                     mOutputStream = mBluetoothSocket.getOutputStream();
 
                     //Public keys Exchange
-                    generateKeyPair();
+                    //generateKeyPair();
                     sendPublicKey();
                     receiveServerPublicKey();
                     ///////////////////////
 
                     //Data Exchange
                     sendDataEncryptedWithAES(uuid.toString());
+                    MainActivity.appendToLogTextView("UUID encriptado enviado.");
                     //Receive confirmation message
                     receiveDataEncryptedWithAES();
 
                     // Send data encrypted with AES
                     //TODO send READY FOR DATA
                     sendDataEncryptedWithAES("Ready for data");
+                    MainActivity.appendToLogTextView("Ready for data ENVIADO");
 
                     //TODO Receive the buffer size
                     ///////////////////////
 
                 } catch (IOException e) {
                     // Handle error
-                } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException(e);
                 }
             }
 

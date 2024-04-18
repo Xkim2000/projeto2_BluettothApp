@@ -19,9 +19,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -56,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     private static MainActivity instance;
     private static Intent serviceIntent;
 
+    private static TextView logsTextView;
+
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
@@ -75,6 +79,20 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    public static void appendToLogTextView(String textToAdd) {
+        String currentText = logsTextView.getText().toString();
+        String newText = currentText + "\n" + textToAdd;
+        logsTextView.setText(newText);
+
+        // Scroll to the bottom
+        logsTextView.post(() -> {
+            int scrollAmount = logsTextView.getLayout().getLineTop(logsTextView.getLineCount()) - logsTextView.getHeight();
+            if (scrollAmount > 0)
+                logsTextView.scrollTo(0, scrollAmount);
+            else
+                logsTextView.scrollTo(0, 0);
+        });
+    }
     public static MainActivity getInstance() {
         return instance;
     }
@@ -88,6 +106,9 @@ public class MainActivity extends AppCompatActivity {
 
         Button connectButton = findViewById(R.id.buttonStart);
         Button disconnectButton = findViewById(R.id.buttonStop);
+
+        logsTextView = findViewById(R.id.logTextView);
+        logsTextView.setMovementMethod(new ScrollingMovementMethod());
 
         Intent intent = new Intent(this, BluetoothService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
@@ -121,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
                                         // Do something with each equipment item
                                         db.addDevice(new Device(equipment.getId(),equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
                                     }
+                                    appendToLogTextView("Adicionados dispositivos da API.");
                                 } else {
                                     // Handle errors
                                     Log.e("API Error", "Failed to get equipment list");
@@ -129,35 +151,11 @@ public class MainActivity extends AppCompatActivity {
                         });
                     } catch (Exception e) {
                         Log.e("API Error", "Failed to get equipment: " + e.getMessage());
+                        appendToLogTextView("API Error Failed to get equipment list.");
                     }
                 }
             }).start();
         }
-
-/*
-        connectButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (bluetoothService != null && isBound) {
-                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                    if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
-                        BluetoothDevice device = bluetoothAdapter.getRemoteDevice("D8:3A:DD:36:E5:30");
-                        bluetoothService.connectToDevice(device);
-                    } else {
-                        Log.e(TAG, "Bluetooth adapter is not available or not enabled");
-                    }
-                } else {
-                    Log.e(TAG, "Bluetooth service not bound");
-                }
-            }
-        });
-*/
-
-        //createNotificationChannel();
-
-        //TODO Remove startSyncService from the OnCreate, move after receving new data.
-        //SYNC Service initalization
-        //startSyncService();
 
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -175,6 +173,9 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
+                //Add log on TextView
+                appendToLogTextView("Percurso Iniciado.");
+
                 // Initialize the CountDownLatch with a count of 1
                 locationLatch = new CountDownLatch(1);
 
@@ -187,6 +188,8 @@ public class MainActivity extends AppCompatActivity {
 
                         // Now that we have the location, find the nearest device
                         nearestDevice = findNearestDevice(db.getAllDevices(), androidPhoneLocation);
+
+                        appendToLogTextView("O dispositivo mais proximo é: " + nearestDevice.getName());
 
                         // Signal the CountDownLatch
                         locationLatch.countDown();
@@ -281,6 +284,7 @@ public class MainActivity extends AppCompatActivity {
         serviceIntent.putExtra("destinationLng", destinationLng);
         serviceIntent.putExtra("deviceMac", macAddress);
         ContextCompat.startForegroundService(this, serviceIntent);
+        appendToLogTextView("Iniciado o serviço de localização.");
 
     }
 

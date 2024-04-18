@@ -81,12 +81,16 @@ public class LocationHelper {
         float distanceInMeters = results[0];
 
         if (distanceInMeters <= 30) {
+            MainActivity mainActivity = MainActivity.getInstance();
+            MainActivity.appendToLogTextView("Raspberry DENTRO do alcance para comunicação. Em " + distanceInMeters + " metros.");
             // You are within 30 meters of the destination
             Log.d(TAG, "Within 30 meters of destination!");
             // Do whatever action you want here, like logging
-            MainActivity mainActivity = MainActivity.getInstance();
             mainActivity.makeConnection();
+        }else{
+            MainActivity.appendToLogTextView("Raspberry FORA do alcance para comunicação. Em " + distanceInMeters);
         }
+
     }
 }
 
