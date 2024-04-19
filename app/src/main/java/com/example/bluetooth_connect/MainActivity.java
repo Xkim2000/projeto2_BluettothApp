@@ -326,6 +326,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             Intent serviceIntent = new Intent(this, SyncService.class);
             startService(serviceIntent);
+            appendToLogTextView("Sync service inicializado.");
         } catch (Exception e) {
             Log.d(TAG, "startSyncService: " + e);
         }

@@ -194,13 +194,21 @@ public class BluetoothService extends Service {
     }
 
     // Método para receber os dados criptografados do cliente
-    public void receiveDataEncryptedWithAES() {
+    public byte[] receiveDataEncryptedWithAES() {
         try {
-            byte[] encryptedData = new byte[2048]; // Tamanho máximo dos dados criptografados
+            byte[] encryptedData;
+            if (bufferSize == 0){
+                encryptedData = new byte[2048];
+            }else{
+                int nextDivisibleBy32 = ((bufferSize + 31) / 32) * 32;
+
+                encryptedData = new byte[nextDivisibleBy32];
+            }
+            // Tamanho máximo dos dados criptografados
             int bytesRead = mInputStream.read(encryptedData);
             if (bytesRead == -1) {
                 // Não há dados para ler
-                return;
+                return null;
             }
 
             // Separar a chave AES e os dados criptografados
@@ -217,17 +225,17 @@ public class BluetoothService extends Service {
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, aesKey);
             byte[] decryptedData = cipher.doFinal(encryptedDataOnly);
-            //TODO return the decrypted data for use.
-
             // Exibir os dados descriptografados
             //System.out.println("Decrypted data: " + new String(decryptedData, StandardCharsets.UTF_8));
 
             MainActivity.appendToLogTextView("Dados foram recebidos e desencriptados.");
+            return decryptedData;
 
         } catch (Exception e) {
             MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
             e.printStackTrace();
         }
+        return null;
     }
 
     private SecretKeySpec decryptAesKey(byte[] encryptedAesKey) {
@@ -313,12 +321,43 @@ public class BluetoothService extends Service {
                     //Receive confirmation message
                     receiveDataEncryptedWithAES();
 
-                    // Send data encrypted with AES
-                    //TODO send READY FOR DATA
+                    // Send ready for data encrypted with AES
                     sendDataEncryptedWithAES("Ready for data");
                     MainActivity.appendToLogTextView("Ready for data ENVIADO");
 
-                    //TODO Receive the buffer size
+                    //Receive buffer size
+                    receiveBufferSize();
+
+                    //Receive json data and start sync service
+                    String stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                    //System.out.println(stringDados);
+                    sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
+
+//                    String dataConfirmation;
+//                    do {
+//                        dataConfirmation = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+//                        if(dataConfirmation.equals("Num registos incorreto")){
+//                            stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+//                            //System.out.println(stringDados);
+//                            sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
+//                        }
+//                    }while (!dataConfirmation.equals("Conexao terminada"));
+
+                    String dataConfirmation = "";
+                    while (!dataConfirmation.equals("Conexao terminada")){
+                        dataConfirmation = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                        if(dataConfirmation.equals("Num registos incorreto")){
+                            stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                            //System.out.println(stringDados);
+                            sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
+                        }else{
+                            if(processDataJSON(stringDados)){
+                                MainActivity.getInstance().startSyncService();
+                            }
+                        }
+                    }
+                    closeConnection();
+                    //checkExchangeDataSuccessfuly();
                     ///////////////////////
 
                 } catch (IOException e) {
@@ -340,137 +379,61 @@ public class BluetoothService extends Service {
     }
 
 
-    public void sendData(byte[] bytes) {
-        try {
-
-            mOutputStream.write(bytes);
-
-            // Wait for confirmation
-            boolean confirmationReceived = receiveConfirmation();
-
-            if (confirmationReceived) {
-                System.out.println("Message sent and confirmation received!");
-                //showToast("Message sent and confirmation received!");
-                sendReadyForDataMessage();
-                receiveBufferSize();
-                if(bufferSize != 0){
-                    if(receiveDataJSON()){
-                        MainActivity.getInstance().startSyncService();
-                    }
-                }
-
-            } else {
-                System.out.println("Confirmation not received. Message may not have been delivered.");
-                //showToast("Confirmation not received. Message may not have been delivered.");
-                closeConnection();
-            }
-
-        } catch (IOException e) {
-            // Handle error
-        }
-    }
-
-
-    private void sendReadyForDataMessage() throws IOException {
-        String ready = "Ready for data";
-        mOutputStream.write(ready.getBytes());
-    }
-
-    public boolean receiveConfirmation() {
-        byte[] buffer = new byte[1024];
-        int bytesCount;
-        boolean confirmationReceived = false;
-        long startTime = System.currentTimeMillis();
-
-        try {
-            while (!confirmationReceived && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
-                // Read from input stream
-                bytesCount = mInputStream.read(buffer);
-                if (bytesCount > 0) {
-                    String receivedData = new String(buffer, 0, bytesCount);
-                    // Check for confirmation message
-                    if (receivedData.equals("ConfirmationMessage")) {
-                        confirmationReceived = true;
-                    }
-                }
-            }
-        } catch (IOException e) {
-            // Handle error
-        }
-
-        if (!confirmationReceived) {
-            // Handle timeout here
-            System.out.println("Timeout: Confirmation not received.");
-            //showToast("Timeout: Confirmation not received.");
-        }
-
-        return confirmationReceived;
-    }
-
     public void receiveBufferSize() {
-        byte[] buffer = new byte[1024];
-        int bytesCount;
-        long startTime = System.currentTimeMillis();
-
-        try {
-            while ( System.currentTimeMillis() - startTime < 2000) { // 2 seconds
-                // Read from input stream
-                bytesCount = mInputStream.read(buffer);
-                if (bytesCount > 0) {
-                    String receivedData = new String(buffer, 0, bytesCount);
-                    // Check for confirmation message
-                    bufferSize = Integer.parseInt(receivedData);
-                    break;
-                }
-            }
-        } catch (IOException e) {
-            // Handle error
-        }
+        String bufferSizeString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+        bufferSize = Integer.parseInt(bufferSizeString);
+        MainActivity.appendToLogTextView("Buffersize recebido. Tamanho: " + bufferSize);
     }
 
-    public boolean receiveDataJSON() {
-        byte[] buffer = new byte[bufferSize];
-        int bytesCount;
-        boolean dataReceived = false;
-        long startTime = System.currentTimeMillis();
+    public void checkExchangeDataSuccessfuly() {
+        String closeConectionString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+        if(closeConectionString.equals("Conexao terminada")){
+            closeConnection();
+        }
+        MainActivity.appendToLogTextView("Conexão terminada. Troca de dados bem sucedida");
+    }
 
+    public int countJSONData (String receivedData){
+        JSONArray jsonArray = null;
         try {
-            while (!dataReceived && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
-                // Read from input stream
-                bytesCount = mInputStream.read(buffer);
-                if (bytesCount > 0) {
-                    String receivedData = new String(buffer, 0, bytesCount);
+            jsonArray = new JSONArray(receivedData);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        int count = jsonArray.length();
+        return  count;
+    }
 
-                    // Parse the received JSON data
-                    try {
-                        JSONArray jsonArray = new JSONArray(receivedData);
-                        db = new SQLiteDatabaseHandler(this);
-                        MainActivity ma = MainActivity.getInstance();
-                        for (int i = 0; i < jsonArray.length(); i++) {
-                            JSONObject jsonObject = jsonArray.getJSONObject(i);
+    public boolean processDataJSON(String receivedData) {
+        boolean dataReceived = false;
 
-                            // Extract data from JSON object
-                            String classData = jsonObject.getString("class");
-                            String timestamp = jsonObject.getString("timestamp");
+        // Parse the received JSON data
+        try {
+            JSONArray jsonArray = new JSONArray(receivedData);
+            jsonArray.length();
+            db = new SQLiteDatabaseHandler(this);
+            MainActivity ma = MainActivity.getInstance();
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
 
-                            // Now you can use the extracted data as needed
-                            System.out.println("Class: " + classData + ", Timestamp: " + timestamp);
+                // Extract data from JSON object
+                String classData = jsonObject.getString("class");
+                String timestamp = jsonObject.getString("timestamp");
 
-                            db.addRecord(new Record(classData,timestamp,ma.getNearestDevice().getId(),false));
-                        }
+                // Now you can use the extracted data as needed
+                //System.out.println("Class: " + classData + ", Timestamp: " + timestamp);
 
-                        // Set dataReceived to true since we received and processed data
-                        dataReceived = true;
-
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        // Handle JSON parsing error
-                    }
-                }
+                db.addRecord(new Record(classData,timestamp,ma.getNearestDevice().getId(),false));
             }
-        } catch (IOException e) {
+
+            // Set dataReceived to true since we received and processed data
+            dataReceived = true;
+            bufferSize = 0;
+            MainActivity.appendToLogTextView("Dados inseridos na BD local.");
+
+        } catch (JSONException e) {
             e.printStackTrace();
-            // Handle error reading from input stream
+            // Handle JSON parsing error
         }
 
         if (!dataReceived) {
