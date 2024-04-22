@@ -151,6 +151,10 @@ public class BluetoothService extends Service {
         // Read data from the input stream
         try {
             bytesCount = mInputStream.read(buffer);
+            dataRead[0] = true; // Mark data as read
+
+            // Interrupt the timeout thread since data is successfully read
+            timeoutThread.interrupt();
             if (bytesCount > 0) {
                 // Convert received bytes to PublicKey
                 byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
@@ -165,10 +169,7 @@ public class BluetoothService extends Service {
             // Handle error
             e.printStackTrace();
         }
-        dataRead[0] = true; // Mark data as read
 
-        // Interrupt the timeout thread since data is successfully read
-        timeoutThread.interrupt();
 
         if (!dataRead[0]) {
             // Não há dados para ler or data not read within timeout
@@ -295,7 +296,7 @@ public class BluetoothService extends Service {
 //    }
 
 
-    public byte[] receiveDataEncryptedWithAES() {
+    public byte[] receiveDataEncryptedWithAES(){
         try {
             byte[] encryptedData;
             if (bufferSize == 0){
@@ -447,9 +448,9 @@ public class BluetoothService extends Service {
                     sendDataEncryptedWithAES(uuid.toString());
                     MainActivity.appendToLogTextView("UUID encriptado enviado.");
                     //Receive confirmation message
-                    //TODO verify if the message receive is Confirmation Message
-                    receiveDataEncryptedWithAES();
-                    if(!mBluetoothSocket.isConnected()){
+                    String confirmationMessage = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                    //receiveDataEncryptedWithAES();
+                    if(!mBluetoothSocket.isConnected() || !confirmationMessage.equals("Confirmation Message")){
                         return false;
                     }
                     //receiveDataEncryptedWithAES();
@@ -457,6 +458,7 @@ public class BluetoothService extends Service {
                     // Send ready for data encrypted with AES
                     sendDataEncryptedWithAES("Ready for data");
                     MainActivity.appendToLogTextView("Ready for data ENVIADO");
+
 
                     //Receive buffer size
                     receiveBufferSize();
@@ -505,6 +507,8 @@ public class BluetoothService extends Service {
 
                 } catch (IOException e) {
                     // Handle error
+                } catch (Exception e) {
+                    return false;
                 }
             }
 
@@ -523,18 +527,10 @@ public class BluetoothService extends Service {
     }
 
 
-    public void receiveBufferSize() {
+    public void receiveBufferSize() throws Exception{
         String bufferSizeString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
         bufferSize = Integer.parseInt(bufferSizeString);
         MainActivity.appendToLogTextView("Buffersize recebido. Tamanho: " + bufferSize);
-    }
-
-    public void checkExchangeDataSuccessfuly() {
-        String closeConectionString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
-        if(closeConectionString.equals("Conexao terminada")){
-            closeConnection();
-        }
-        MainActivity.appendToLogTextView("Conexão terminada. Troca de dados bem sucedida");
     }
 
     public int countJSONData (String receivedData){
