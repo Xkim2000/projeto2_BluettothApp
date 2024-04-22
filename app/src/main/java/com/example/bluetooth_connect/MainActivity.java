@@ -60,6 +60,12 @@ public class MainActivity extends AppCompatActivity {
 
     private static TextView logsTextView;
 
+    private static boolean isBluetoothConnected;
+
+    public static void setBluetoothConnected(boolean bluetoothConnected) {
+        isBluetoothConnected = bluetoothConnected;
+    }
+
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
@@ -254,17 +260,7 @@ public class MainActivity extends AppCompatActivity {
                 BluetoothDevice device = bluetoothAdapter.getRemoteDevice(nearestDevice.getMac());
 
                 //TODO exception treatment for the connection not successfully
-
-                // Start a 2-second delay before connecting
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        bluetoothService.connectToDevice(device);
-
-                        //SYNC Service initalization
-                        //startSyncService();
-                    }
-                }, 2000); // 2000 milliseconds = 2 seconds
+                connectToBluetoothDevice(device);
 
             } else {
                 Log.e(TAG, "Bluetooth adapter is not available or not enabled");
@@ -274,6 +270,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void connectToBluetoothDevice(final BluetoothDevice device) {
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!bluetoothService.connectToDevice(device)) {
+                    // If Bluetooth is not connected, attempt to connect and reschedule this Runnable
+                    connectToBluetoothDevice(device); // Recursive call
+                    appendToLogTextView("Tentei conectar com o parceiro.");
+                } else {
+                    // Bluetooth is connected, stop further executions
+                    handler.removeCallbacksAndMessages(null);
+                }
+            }
+        }, 1000);
+    }
 
     private void checkLocation() {
         double destinationLat = nearestDevice.getLatitude();

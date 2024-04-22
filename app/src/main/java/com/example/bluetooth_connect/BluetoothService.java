@@ -281,16 +281,16 @@ public class BluetoothService extends Service {
         BluetoothService getService();
     }
 
-    public void connectToDevice(BluetoothDevice device) {
+    public boolean connectToDevice(BluetoothDevice device) {
         if (device == null) {
             Log.e(TAG, "Bluetooth device is null");
-            return;
+            return false;
         }
 
         try {
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_DENIED) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    return;
+                    return false;
                 }
             }
             mBluetoothSocket = device.createRfcommSocketToServiceRecord(uuid);
@@ -298,10 +298,12 @@ public class BluetoothService extends Service {
                 mBluetoothSocket.connect();
             }catch (IOException connEx){
                 closeConnection();
-                return;
+                MainActivity.appendToLogTextView("Conexao mal sucedida.");
+                return false;
             }
 
             if (mBluetoothSocket != null && mBluetoothSocket.isConnected()) {
+                MainActivity.setBluetoothConnected(true);
                 MainActivity.appendToLogTextView("Bluetooth conectado com o dispositivo.");
                 // Socket is connected, now we can obtain our IO streams
                 try {
@@ -357,6 +359,7 @@ public class BluetoothService extends Service {
                         }
                     }
                     closeConnection();
+                    MainActivity.setBluetoothConnected(false);
                     //checkExchangeDataSuccessfuly();
                     ///////////////////////
 
@@ -376,6 +379,7 @@ public class BluetoothService extends Service {
             Log.e(TAG, "Connection failed: " + e.getMessage());
             closeConnection();
         }
+        return true;
     }
 
 
