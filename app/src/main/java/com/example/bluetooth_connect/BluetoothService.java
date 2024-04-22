@@ -95,35 +95,85 @@ public class BluetoothService extends Service {
     }
 
     // Receive server's public key with a timeout of 2 seconds
+//    public void receiveServerPublicKey() {
+//        byte[] buffer = new byte[2048]; // key size
+//        int bytesCount;
+//        long startTime = System.currentTimeMillis();
+//
+//        try {
+//            while (serverPublicKey == null && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
+//                // Read from input stream
+//                bytesCount = mInputStream.read(buffer);
+//                if (bytesCount > 0) {
+//                    // Convert received bytes to PublicKey
+//                    byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
+//                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
+//                    String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+//                    //System.out.println(publicKeyString);
+//                    MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+//                }
+//            }
+//        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+//            MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
+//            // Handle error
+//            e.printStackTrace();
+//        }
+//
+//        if (serverPublicKey == null) {
+//            // Handle timeout here
+//            System.out.println("Timeout: Server's public key not received.");
+//        }
+//
+//    }
+     //Receive server's public key with a timeout of 2 seconds
     public void receiveServerPublicKey() {
         byte[] buffer = new byte[2048]; // key size
         int bytesCount;
-        long startTime = System.currentTimeMillis();
 
-        try {
-            while (serverPublicKey == null && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
-                // Read from input stream
-                bytesCount = mInputStream.read(buffer);
-                if (bytesCount > 0) {
-                    // Convert received bytes to PublicKey
-                    byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
-                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
-                    String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
-                    //System.out.println(publicKeyString);
-                    MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+        // Create a flag to indicate if data is read successfully
+        final boolean[] dataRead = {false};
+
+        // Create a thread for timeout
+        Thread timeoutThread = new Thread(() -> {
+            try {
+                Thread.sleep(2000); // 2-second timeout
+            } catch (InterruptedException e) {
+                // Timeout thread interrupted
+            } finally {
+                // If data is not read successfully, close connection
+                if (!dataRead[0]) {
+                    closeConnection(); // Assuming closeConnection() method is available
                 }
             }
+        });
+        timeoutThread.start();
+
+        // Read data from the input stream
+        try {
+            bytesCount = mInputStream.read(buffer);
+            if (bytesCount > 0) {
+                // Convert received bytes to PublicKey
+                byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
+                serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
+                //String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+                //System.out.println(publicKeyString);
+                MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+            }
+
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
             // Handle error
             e.printStackTrace();
         }
+        dataRead[0] = true; // Mark data as read
 
-        if (serverPublicKey == null) {
-            // Handle timeout here
-            System.out.println("Timeout: Server's public key not received.");
+        // Interrupt the timeout thread since data is successfully read
+        timeoutThread.interrupt();
+
+        if (!dataRead[0]) {
+            // Não há dados para ler or data not read within timeout
+            Log.d("NãoLeu","Não leu a Public Key do Server");
         }
-
     }
 
     private byte[] decodePEM(String pemKey) {
@@ -388,6 +438,9 @@ public class BluetoothService extends Service {
                     //generateKeyPair();
                     sendPublicKey();
                     receiveServerPublicKey();
+                    if(!mBluetoothSocket.isConnected()){
+                        return false;
+                    }
                     ///////////////////////
 
                     //Data Exchange
@@ -407,6 +460,9 @@ public class BluetoothService extends Service {
 
                     //Receive buffer size
                     receiveBufferSize();
+                    if(!mBluetoothSocket.isConnected()){
+                        return false;
+                    }
 
                     //Receive json data and start sync service
                     String stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
@@ -426,8 +482,14 @@ public class BluetoothService extends Service {
                     String dataConfirmation = "";
                     while (!dataConfirmation.equals("Conexao terminada")){
                         dataConfirmation = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                        if(!mBluetoothSocket.isConnected()){
+                            return false;
+                        }
                         if(dataConfirmation.equals("Num registos incorreto")){
                             stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                            if(!mBluetoothSocket.isConnected()){
+                                return false;
+                            }
                             //System.out.println(stringDados);
                             sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
                         }else{
