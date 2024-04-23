@@ -29,10 +29,13 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.TimeUnit;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -41,6 +44,8 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+
+import okio.Timeout;
 
 public class BluetoothService extends Service {
     private static final String TAG = "BluetoothService";
@@ -70,6 +75,7 @@ public class BluetoothService extends Service {
         return keyPairGenerator.generateKeyPair();
     }
 
+
     // Send public key to server
     private void sendPublicKey() {
         try {
@@ -89,35 +95,87 @@ public class BluetoothService extends Service {
     }
 
     // Receive server's public key with a timeout of 2 seconds
-    public void receiveServerPublicKey() {
+//    public void receiveServerPublicKey() {
+//        byte[] buffer = new byte[2048]; // key size
+//        int bytesCount;
+//        long startTime = System.currentTimeMillis();
+//
+//        try {
+//            while (serverPublicKey == null && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
+//                // Read from input stream
+//                bytesCount = mInputStream.read(buffer);
+//                if (bytesCount > 0) {
+//                    // Convert received bytes to PublicKey
+//                    byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
+//                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
+//                    String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+//                    //System.out.println(publicKeyString);
+//                    MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+//                }
+//            }
+//        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+//            MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
+//            // Handle error
+//            e.printStackTrace();
+//        }
+//
+//        if (serverPublicKey == null) {
+//            // Handle timeout here
+//            System.out.println("Timeout: Server's public key not received.");
+//        }
+//
+//    }
+     //Receive server's public key with a timeout of 2 seconds
+    public void receiveServerPublicKey() throws Exception{
         byte[] buffer = new byte[2048]; // key size
         int bytesCount;
-        long startTime = System.currentTimeMillis();
 
-        try {
-            while (serverPublicKey == null && System.currentTimeMillis() - startTime < 2000) { // 2 seconds
-                // Read from input stream
-                bytesCount = mInputStream.read(buffer);
-                if (bytesCount > 0) {
-                    // Convert received bytes to PublicKey
-                    byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
-                    serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
-                    String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
-                    //System.out.println(publicKeyString);
-                    MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+        // Create a flag to indicate if data is read successfully
+        final boolean[] dataRead = {false};
+
+        // Create a thread for timeout
+        Thread timeoutThread = new Thread(() -> {
+            try {
+                Thread.sleep(3000); // 3-second timeout
+            } catch (InterruptedException e) {
+                // Timeout thread interrupted
+            } finally {
+                // If data is not read successfully, close connection
+                if (!dataRead[0]) {
+                    closeConnection(); // Assuming closeConnection() method is available
                 }
             }
+        });
+        timeoutThread.start();
+
+        // Read data from the input stream
+        try {
+            bytesCount = mInputStream.read(buffer);
+            dataRead[0] = true; // Mark data as read
+
+            // Interrupt the timeout thread since data is successfully read
+            timeoutThread.interrupt();
+            if (bytesCount > 0) {
+                // Convert received bytes to PublicKey
+                byte[] decodedKeyBytes = decodePEM(new String(buffer, 0, bytesCount));
+                serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
+                //String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+                //System.out.println(publicKeyString);
+                MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+            }
+
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
             // Handle error
             e.printStackTrace();
         }
 
-        if (serverPublicKey == null) {
-            // Handle timeout here
-            System.out.println("Timeout: Server's public key not received.");
-        }
 
+        if (!dataRead[0]) {
+            // Não há dados para ler or data not read within timeout
+            Log.d("NãoLeu","Não leu a Public Key do Server");
+            throw new Exception();
+        }
     }
 
     private byte[] decodePEM(String pemKey) {
@@ -194,20 +252,88 @@ public class BluetoothService extends Service {
     }
 
     // Método para receber os dados criptografados do cliente
-    public byte[] receiveDataEncryptedWithAES() {
+//    public byte[] receiveDataEncryptedWithAES() {
+//        try {
+//            byte[] encryptedData;
+//            if (bufferSize == 0){
+//                encryptedData = new byte[2048];
+//            }else{
+//                int nextDivisibleBy32 = ((bufferSize + 31) / 32) * 32;
+//
+//                encryptedData = new byte[nextDivisibleBy32];
+//            }
+//            // Tamanho máximo dos dados criptografados
+//            int bytesRead = mInputStream.read(encryptedData);
+//            if (bytesRead == -1) {
+//                // Não há dados para ler
+//                return null;
+//            }
+//
+//            // Separar a chave AES e os dados criptografados
+//            byte[] encryptedAesKey = Arrays.copyOfRange(encryptedData, 0, 256);
+//            byte[] encryptedDataOnly = Arrays.copyOfRange(encryptedData, 256, bytesRead);
+//
+//            // Descriptografar a chave AES usando a chave privada RSA
+//            // Criar uma instância da chave AES
+//            SecretKey aesKey = decryptAesKey(encryptedAesKey);
+//            //Log.d(TAG, "aesEncodedKey: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+//
+//
+//            // Descriptografar os dados usando a chave AES
+//            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
+//            cipher.init(Cipher.DECRYPT_MODE, aesKey);
+//            byte[] decryptedData = cipher.doFinal(encryptedDataOnly);
+//            // Exibir os dados descriptografados
+//            //System.out.println("Decrypted data: " + new String(decryptedData, StandardCharsets.UTF_8));
+//
+//            MainActivity.appendToLogTextView("Dados foram recebidos e desencriptados.");
+//            return decryptedData;
+//
+//        } catch (Exception e) {
+//            MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
+//            e.printStackTrace();
+//        }
+//        return null;
+//    }
+
+
+    public byte[] receiveDataEncryptedWithAES() throws Exception{
         try {
             byte[] encryptedData;
             if (bufferSize == 0){
                 encryptedData = new byte[2048];
-            }else{
+            } else {
                 int nextDivisibleBy32 = ((bufferSize + 31) / 32) * 32;
-
                 encryptedData = new byte[nextDivisibleBy32];
             }
-            // Tamanho máximo dos dados criptografados
+
+            // Create a flag to indicate if data is read successfully
+            final boolean[] dataRead = {false};
+
+            // Create a thread for timeout
+            Thread timeoutThread = new Thread(() -> {
+                try {
+                    Thread.sleep(2000); // 2-second timeout
+                } catch (InterruptedException e) {
+                    // Timeout thread interrupted
+                } finally {
+                    // If data is not read successfully, close connection
+                    if (!dataRead[0]) {
+                        closeConnection(); // Assuming closeConnection() method is available
+                    }
+                }
+            });
+            timeoutThread.start();
+
+            // Read data from the input stream
             int bytesRead = mInputStream.read(encryptedData);
-            if (bytesRead == -1) {
-                // Não há dados para ler
+            dataRead[0] = true; // Mark data as read
+
+            // Interrupt the timeout thread since data is successfully read
+            timeoutThread.interrupt();
+
+            if (!dataRead[0] || bytesRead == -1) {
+                // Não há dados para ler or data not read within timeout
                 return null;
             }
 
@@ -219,7 +345,6 @@ public class BluetoothService extends Service {
             // Criar uma instância da chave AES
             SecretKey aesKey = decryptAesKey(encryptedAesKey);
             //Log.d(TAG, "aesEncodedKey: " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
-
 
             // Descriptografar os dados usando a chave AES
             Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
@@ -234,8 +359,8 @@ public class BluetoothService extends Service {
         } catch (Exception e) {
             MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
             e.printStackTrace();
+            throw new Exception();
         }
-        return null;
     }
 
     private SecretKeySpec decryptAesKey(byte[] encryptedAesKey) {
@@ -315,20 +440,32 @@ public class BluetoothService extends Service {
                     //generateKeyPair();
                     sendPublicKey();
                     receiveServerPublicKey();
+                    if(!mBluetoothSocket.isConnected()){
+                        return false;
+                    }
                     ///////////////////////
 
                     //Data Exchange
                     sendDataEncryptedWithAES(uuid.toString());
                     MainActivity.appendToLogTextView("UUID encriptado enviado.");
                     //Receive confirmation message
-                    receiveDataEncryptedWithAES();
+                    String confirmationMessage = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                    //receiveDataEncryptedWithAES();
+                    if(!mBluetoothSocket.isConnected() || !confirmationMessage.equals("Confirmation Message")){
+                        return false;
+                    }
+                    //receiveDataEncryptedWithAES();
 
                     // Send ready for data encrypted with AES
                     sendDataEncryptedWithAES("Ready for data");
                     MainActivity.appendToLogTextView("Ready for data ENVIADO");
 
+
                     //Receive buffer size
                     receiveBufferSize();
+                    if(!mBluetoothSocket.isConnected()){
+                        return false;
+                    }
 
                     //Receive json data and start sync service
                     String stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
@@ -348,8 +485,14 @@ public class BluetoothService extends Service {
                     String dataConfirmation = "";
                     while (!dataConfirmation.equals("Conexao terminada")){
                         dataConfirmation = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                        if(!mBluetoothSocket.isConnected()){
+                            return false;
+                        }
                         if(dataConfirmation.equals("Num registos incorreto")){
                             stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                            if(!mBluetoothSocket.isConnected()){
+                                return false;
+                            }
                             //System.out.println(stringDados);
                             sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
                         }else{
@@ -365,6 +508,8 @@ public class BluetoothService extends Service {
 
                 } catch (IOException e) {
                     // Handle error
+                } catch (Exception e) {
+                    return false;
                 }
             }
 
@@ -383,18 +528,10 @@ public class BluetoothService extends Service {
     }
 
 
-    public void receiveBufferSize() {
+    public void receiveBufferSize() throws Exception{
         String bufferSizeString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
         bufferSize = Integer.parseInt(bufferSizeString);
         MainActivity.appendToLogTextView("Buffersize recebido. Tamanho: " + bufferSize);
-    }
-
-    public void checkExchangeDataSuccessfuly() {
-        String closeConectionString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
-        if(closeConectionString.equals("Conexao terminada")){
-            closeConnection();
-        }
-        MainActivity.appendToLogTextView("Conexão terminada. Troca de dados bem sucedida");
     }
 
     public int countJSONData (String receivedData){

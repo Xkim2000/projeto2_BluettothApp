@@ -111,45 +111,44 @@ public class SyncService extends Service {
             apiClient = new EquipmentApiClient();
             ArrayList<Record> notSyncedRecords = db.getRecordNotSynced();
 
-            if (notSyncedRecords != null) {
-                Log.d(TAG, "Device has Internet !");
-                Log.d(TAG, "Syncing data...");
+            Log.d(TAG, "Device has Internet !");
+            Log.d(TAG, "Syncing data...");
 
 
-                Call<Integer> call = apiClient.insertUserData(notSyncedRecords);
+            Call<Integer> call = apiClient.insertUserData(notSyncedRecords);
 
-                call.enqueue(new Callback<Integer>() {
-                    @Override
-                    public void onResponse(Call<Integer> call, Response<Integer> response) {
+            call.enqueue(new Callback<Integer>() {
+                @Override
+                public void onResponse(Call<Integer> call, Response<Integer> response) {
 
-                        if (response.isSuccessful() && (response.body().equals(notSyncedRecords.size()))) {
-                            // Código de resposta 200-299 indica sucesso
-                            //Log.d(TAG, "Todos os Registros adicionados com sucesso!");
+                    if (response.isSuccessful() && (response.body().equals(notSyncedRecords.size()))) {
+                        // Código de resposta 200-299 indica sucesso
+                        //Log.d(TAG, "Todos os Registros adicionados com sucesso!");
 
-                            for (Record record: notSyncedRecords){
-                                record.setIsSynced(true);
-                                db.updateRecordToSynced(record);
-                            }
-                            db.deleteAlreadySynced();
-                            MainActivity.appendToLogTextView("Dados bem sincronizados com a base de dados central.");
-                            stopSelf();
-
-                        } else {
-                            // Código de resposta diferente de 200-299 indica falha
-                            Log.d(TAG, "Falha ao adicionar registros. Código de resposta: " + response.code());
-                            MainActivity.appendToLogTextView("Falha ao adicionar registros. Código de resposta: " + response.code());
+                        for (Record record: notSyncedRecords){
+                            record.setIsSynced(true);
+                            db.updateRecordToSynced(record);
                         }
-                    }
-                    @Override
-                    public void onFailure(Call<Integer> call, Throwable t) {
-                        // Caso ocorra uma exceção durante a chamada
-                        //System.out.println("Erro ao adicionar registros: " + t.getMessage());
-                        Log.d(TAG, "Erro ao adicionar registros: " + t.getMessage());
-                        MainActivity.appendToLogTextView("Erro ao adicionar registros: " + t.getMessage());
-                    }
-                });
+                        db.deleteAlreadySynced();
+                        MainActivity.appendToLogTextView("Dados bem sincronizados com a base de dados central.");
+                        stopSelf();
 
-            }
+                    } else {
+                        // Código de resposta diferente de 200-299 indica falha
+                        Log.d(TAG, "Falha ao adicionar registros. Código de resposta: " + response.code());
+                        MainActivity.appendToLogTextView("Falha ao adicionar registros. Código de resposta: " + response.code());
+                    }
+                }
+                @Override
+                public void onFailure(Call<Integer> call, Throwable t) {
+                    // Caso ocorra uma exceção durante a chamada
+                    //System.out.println("Erro ao adicionar registros: " + t.getMessage());
+                    Log.d(TAG, "Erro ao adicionar registros: " + t.getMessage());
+                    MainActivity.appendToLogTextView("Erro ao adicionar registros: " + t.getMessage());
+                }
+            });
+
+
         } else {
             Log.d(TAG, "NO INTERNET!");
         }
