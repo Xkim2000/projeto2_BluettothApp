@@ -126,7 +126,7 @@ public class BluetoothService extends Service {
 //
 //    }
      //Receive server's public key with a timeout of 2 seconds
-    public void receiveServerPublicKey() {
+    public void receiveServerPublicKey() throws Exception{
         byte[] buffer = new byte[2048]; // key size
         int bytesCount;
 
@@ -136,7 +136,7 @@ public class BluetoothService extends Service {
         // Create a thread for timeout
         Thread timeoutThread = new Thread(() -> {
             try {
-                Thread.sleep(2000); // 2-second timeout
+                Thread.sleep(3000); // 3-second timeout
             } catch (InterruptedException e) {
                 // Timeout thread interrupted
             } finally {
@@ -174,6 +174,7 @@ public class BluetoothService extends Service {
         if (!dataRead[0]) {
             // Não há dados para ler or data not read within timeout
             Log.d("NãoLeu","Não leu a Public Key do Server");
+            throw new Exception();
         }
     }
 
@@ -296,7 +297,7 @@ public class BluetoothService extends Service {
 //    }
 
 
-    public byte[] receiveDataEncryptedWithAES(){
+    public byte[] receiveDataEncryptedWithAES() throws Exception{
         try {
             byte[] encryptedData;
             if (bufferSize == 0){
@@ -358,8 +359,8 @@ public class BluetoothService extends Service {
         } catch (Exception e) {
             MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
             e.printStackTrace();
+            throw new Exception();
         }
-        return null;
     }
 
     private SecretKeySpec decryptAesKey(byte[] encryptedAesKey) {

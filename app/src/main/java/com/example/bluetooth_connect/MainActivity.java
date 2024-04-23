@@ -336,9 +336,14 @@ public class MainActivity extends AppCompatActivity {
 
     public void startSyncService() {
         try {
-            Intent serviceIntent = new Intent(this, SyncService.class);
-            startService(serviceIntent);
-            appendToLogTextView("Sync service inicializado.");
+            db = new SQLiteDatabaseHandler(MainActivity.getInstance());
+            apiClient = new EquipmentApiClient();
+            ArrayList<Record> notSyncedRecords = db.getRecordNotSynced();
+            if(!notSyncedRecords.isEmpty()){
+                Intent serviceIntent = new Intent(this, SyncService.class);
+                startService(serviceIntent);
+                appendToLogTextView("Sync service inicializado.");
+            }
         } catch (Exception e) {
             Log.d(TAG, "startSyncService: " + e);
         }
