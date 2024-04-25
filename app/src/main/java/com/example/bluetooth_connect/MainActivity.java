@@ -193,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
                         Location androidPhoneLocation = new Location(location);
 
                         // Now that we have the location, find the nearest device
+                        //TODO Work exception if no devices in db.
                         nearestDevice = findNearestDevice(db.getAllDevices(), androidPhoneLocation);
 
                         appendToLogTextView("O dispositivo mais proximo é: " + nearestDevice.getName());

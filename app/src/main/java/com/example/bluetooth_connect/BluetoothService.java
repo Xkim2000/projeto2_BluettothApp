@@ -460,47 +460,64 @@ public class BluetoothService extends Service {
                     sendDataEncryptedWithAES("Ready for data");
                     MainActivity.appendToLogTextView("Ready for data ENVIADO");
 
-
                     //Receive buffer size
                     receiveBufferSize();
                     if(!mBluetoothSocket.isConnected()){
                         return false;
                     }
 
-                    //Receive json data and start sync service
-                    String stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
-                    //System.out.println(stringDados);
-                    sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
+//                    //Receive json data and start sync service
+//                    String stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+//                    //System.out.println(stringDados);
+//                    sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
 
-//                    String dataConfirmation;
-//                    do {
+//                    String dataConfirmation = "";
+//                    while (!dataConfirmation.equals("Conexao terminada")){
 //                        dataConfirmation = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+//                        if(!mBluetoothSocket.isConnected()){
+//                            return false;
+//                        }
 //                        if(dataConfirmation.equals("Num registos incorreto")){
 //                            stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+//                            if(!mBluetoothSocket.isConnected()){
+//                                return false;
+//                            }
 //                            //System.out.println(stringDados);
 //                            sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
+//                        }else{
+//                            if(processDataJSON(stringDados)){
+//                                MainActivity.getInstance().startSyncService();
+//                            }
 //                        }
-//                    }while (!dataConfirmation.equals("Conexao terminada"));
+//                    }
 
-                    String dataConfirmation = "";
-                    while (!dataConfirmation.equals("Conexao terminada")){
-                        dataConfirmation = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
-                        if(!mBluetoothSocket.isConnected()){
-                            return false;
-                        }
-                        if(dataConfirmation.equals("Num registos incorreto")){
-                            stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
-                            if(!mBluetoothSocket.isConnected()){
-                                return false;
+                    String stringDados = "";
+                    while (!stringDados.equals("Conexao terminada")){
+                        //Receive json data and start sync service
+                        stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                        //System.out.println(stringDados);
+                        MainActivity.appendToLogTextView("Dados recebidos.");
+
+                        int countDados = countJSONData(stringDados);
+                        sendDataEncryptedWithAES(Integer.toString(countDados));
+                        MainActivity.appendToLogTextView("Enviado num dados");
+
+                        stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
+                        if (!stringDados.equals("Bloco enviado")) {
+                            while (stringDados.equals("Num registos incorreto")){
+                                MainActivity.appendToLogTextView("Recebido " +  "(Num registos incorreto)");
+                                stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
                             }
-                            //System.out.println(stringDados);
-                            sendDataEncryptedWithAES(Integer.toString(countJSONData(stringDados)));
-                        }else{
-                            if(processDataJSON(stringDados)){
-                                MainActivity.getInstance().startSyncService();
-                            }
+                        }else {
+                            MainActivity.appendToLogTextView("Recebido " +  "(Bloco enviado)");
                         }
+
+                        processDataJSON(stringDados);
+
                     }
+                    //TODO Verify if this spot is the right one for starting the Sync Service
+                    MainActivity.getInstance().startSyncService();
+
                     closeConnection();
                     MainActivity.setBluetoothConnected(false);
                     //checkExchangeDataSuccessfuly();
