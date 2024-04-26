@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.database.sqlite.SQLiteStatement;
 import android.util.Log;
 
 import java.time.LocalDateTime;
@@ -260,17 +261,31 @@ public class SQLiteDatabaseHandler extends SQLiteOpenHelper {
         return rowsDeleted;
     }
 
+    //TODO this method does not work
+//    public int deleteAlreadySynced() {
+//        SQLiteDatabase db = this.getWritableDatabase();
+//
+//        String whereClause = KEY_RECORD_IS_SYNCED + " = ?";
+//        String[] whereArgs = { String.valueOf(true) };
+//        int rowsDeleted = db.delete(TABLE_USERS_DATA, whereClause, whereArgs);
+//
+//        Log.d("DeleteSyncedRecords", "Deleted " + rowsDeleted + " rows");
+//
+//        db.close();
+//        return  rowsDeleted;
+//    }
+
     public int deleteAlreadySynced() {
         SQLiteDatabase db = this.getWritableDatabase();
 
-        String whereClause = KEY_RECORD_IS_SYNCED + " = ?";
-        String[] whereArgs = { String.valueOf(true) };
-        int rowsDeleted = db.delete(TABLE_USERS_DATA, whereClause, whereArgs);
+        String sqlQuery = "DELETE FROM " + TABLE_USERS_DATA + " WHERE " + KEY_RECORD_IS_SYNCED + " = 1";
+        SQLiteStatement statement = db.compileStatement(sqlQuery);
+        int rowsDeleted = statement.executeUpdateDelete();
 
-        //Log.d("DeleteSyncedRecords", "Deleted " + rowsDeleted + " rows");
+        Log.d("DeleteSyncedRecords", "Deleted " + rowsDeleted + " rows");
 
         db.close();
-        return  rowsDeleted;
+        return rowsDeleted;
     }
 
     public ArrayList<Record> getAllRecords() {
