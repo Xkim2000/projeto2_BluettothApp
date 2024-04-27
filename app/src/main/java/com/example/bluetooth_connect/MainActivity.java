@@ -111,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 logsTextView.scrollTo(0, 0);
         });
     }
+
     public static MainActivity getInstance() {
         return instance;
     }
@@ -145,9 +146,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //        map.onCreate(savedInstanceState);
 
 
-
         // Create and start a new Thread to make the API call
-        if(has_Internet()){
+        if (has_Internet()) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -164,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     for (Device equipment : equipmentList) {
                                         //Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
                                         // Do something with each equipment item
-                                        db.addDevice(new Device(equipment.getId(),equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
+                                        db.addDevice(new Device(equipment.getId(), equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
                                     }
                                     appendToLogTextView("Adicionados dispositivos da API.");
                                 } else {
@@ -358,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             db = new SQLiteDatabaseHandler(MainActivity.getInstance());
             apiClient = new EquipmentApiClient();
             ArrayList<Record> notSyncedRecords = db.getRecordNotSynced();
-            if(!notSyncedRecords.isEmpty()){
+            if (!notSyncedRecords.isEmpty()) {
                 Intent serviceIntent = new Intent(this, SyncService.class);
                 startService(serviceIntent);
                 appendToLogTextView("Sync service inicializado.");
@@ -368,7 +368,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private boolean has_Internet(){
+    private boolean has_Internet() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         Network activeNetwork = connectivityManager.getActiveNetwork();
 
@@ -394,9 +394,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap.moveCamera(cameraUpdate);
         googleMap.moveCamera(CameraUpdateFactory.zoomTo(10.0f));
         ArrayList<Device> devices = db.getAllDevices();
-        for (Device dev : devices){
-            LatLng markerPosition = new LatLng(dev.getLatitude(), dev.getLongitude());
-            googleMap.addMarker(new MarkerOptions().position(markerPosition).title(dev.getName()));
+        if(!devices.isEmpty()){
+            for (Device dev : devices) {
+                LatLng markerPosition = new LatLng(dev.getLatitude(), dev.getLongitude());
+                googleMap.addMarker(new MarkerOptions().position(markerPosition).title(dev.getName()));
+            }
         }
+
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        googleMap.setMyLocationEnabled(true);
+
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if (location != null) {
+            double currentLatitude = location.getLatitude();
+            double currentLongitude = location.getLongitude();
+            LatLng currentLatLng = new LatLng(currentLatitude, currentLongitude);
+            CameraUpdate cameraUpdate_1 = CameraUpdateFactory.newLatLngZoom(currentLatLng, 19);
+            googleMap.animateCamera(cameraUpdate_1);
+        }
+
     }
+
+
 }
