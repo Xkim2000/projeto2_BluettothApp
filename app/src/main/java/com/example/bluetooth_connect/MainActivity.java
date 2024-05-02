@@ -394,10 +394,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap.moveCamera(cameraUpdate);
         googleMap.moveCamera(CameraUpdateFactory.zoomTo(10.0f));
         ArrayList<Device> devices = db.getAllDevices();
-        if(!devices.isEmpty()){
-            for (Device dev : devices) {
-                LatLng markerPosition = new LatLng(dev.getLatitude(), dev.getLongitude());
-                googleMap.addMarker(new MarkerOptions().position(markerPosition).title(dev.getName()));
+        if(devices != null){
+            if(!devices.isEmpty()){
+                for (Device dev : devices) {
+                    LatLng markerPosition = new LatLng(dev.getLatitude(), dev.getLongitude());
+                    googleMap.addMarker(new MarkerOptions().position(markerPosition).title(dev.getName()));
+                }
             }
         }
 
