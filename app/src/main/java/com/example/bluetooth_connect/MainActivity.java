@@ -25,16 +25,26 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     private static final String TAG = "MainActivity";
 
     private BluetoothService bluetoothService;
@@ -61,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
     private static TextView logsTextView;
 
     private static boolean isBluetoothConnected;
+
+    private GoogleMap googleMap;
 
     public static void setBluetoothConnected(boolean bluetoothConnected) {
         isBluetoothConnected = bluetoothConnected;
@@ -99,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
                 logsTextView.scrollTo(0, 0);
         });
     }
+
     public static MainActivity getInstance() {
         return instance;
     }
@@ -128,8 +141,13 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Location Manager
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapView);
+        mapFragment.getMapAsync(this);
+//        map.onCreate(savedInstanceState);
+
+
         // Create and start a new Thread to make the API call
-        if(has_Internet()){
+        if (has_Internet()) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -146,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
                                     for (Device equipment : equipmentList) {
                                         //Log.d("Equipment", "ID: " + equipment.getId() + ", Name: " + equipment.getName());
                                         // Do something with each equipment item
-                                        db.addDevice(new Device(equipment.getId(),equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
+                                        db.addDevice(new Device(equipment.getId(), equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
                                     }
                                     appendToLogTextView("Adicionados dispositivos da API.");
                                 } else {
@@ -340,7 +358,7 @@ public class MainActivity extends AppCompatActivity {
             db = new SQLiteDatabaseHandler(MainActivity.getInstance());
             apiClient = new EquipmentApiClient();
             ArrayList<Record> notSyncedRecords = db.getRecordNotSynced();
-            if(!notSyncedRecords.isEmpty()){
+            if (!notSyncedRecords.isEmpty()) {
                 Intent serviceIntent = new Intent(this, SyncService.class);
                 startService(serviceIntent);
                 appendToLogTextView("Sync service inicializado.");
@@ -350,7 +368,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean has_Internet(){
+    private boolean has_Internet() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         Network activeNetwork = connectivityManager.getActiveNetwork();
 
@@ -366,6 +384,39 @@ public class MainActivity extends AppCompatActivity {
         } else {
             return false;
         }
+    }
+
+
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        LatLng targetCoordinates = new LatLng(39.826224, -7.751641);
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(targetCoordinates);
+        googleMap.moveCamera(cameraUpdate);
+        googleMap.moveCamera(CameraUpdateFactory.zoomTo(10.0f));
+        ArrayList<Device> devices = db.getAllDevices();
+        if(devices != null){
+            if(!devices.isEmpty()){
+                for (Device dev : devices) {
+                    LatLng markerPosition = new LatLng(dev.getLatitude(), dev.getLongitude());
+                    googleMap.addMarker(new MarkerOptions().position(markerPosition).title(dev.getName()));
+                }
+            }
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        googleMap.setMyLocationEnabled(true);
+
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if (location != null) {
+            double currentLatitude = location.getLatitude();
+            double currentLongitude = location.getLongitude();
+            LatLng currentLatLng = new LatLng(currentLatitude, currentLongitude);
+            CameraUpdate cameraUpdate_1 = CameraUpdateFactory.newLatLngZoom(currentLatLng, 19);
+            googleMap.animateCamera(cameraUpdate_1);
+        }
+
     }
 
 
