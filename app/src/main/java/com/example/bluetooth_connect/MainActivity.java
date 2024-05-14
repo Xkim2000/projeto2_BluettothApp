@@ -166,7 +166,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         // Do something with each equipment item
                                         db.addDevice(new Device(equipment.getId(), equipment.getName(), equipment.getLatitude(), equipment.getLongitude(), equipment.getMac()));
                                     }
-                                    appendToLogTextView("Adicionados dispositivos da API.");
+                                    //appendToLogTextView("Adicionados dispositivos da API.");
+                                    appendToLogTextView("Added API devices.");
                                 } else {
                                     // Handle errors
                                     Log.e("API Error", "Failed to get equipment list");
@@ -198,7 +199,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
 
                 //Add log on TextView
-                appendToLogTextView("Percurso Iniciado.");
+                //appendToLogTextView("Percurso Iniciado.");
+                appendToLogTextView("Route Started.");
 
                 // Initialize the CountDownLatch with a count of 1
                 locationLatch = new CountDownLatch(1);
@@ -214,7 +216,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         //TODO Work exception if no devices in db.
                         nearestDevice = findNearestDevice(db.getAllDevices(), androidPhoneLocation);
 
-                        appendToLogTextView("O dispositivo mais proximo é: " + nearestDevice.getName());
+                        //appendToLogTextView("O dispositivo mais proximo é: " + nearestDevice.getName());
+                        appendToLogTextView("The closest device is: " + nearestDevice.getName());
 
                         // Signal the CountDownLatch
                         locationLatch.countDown();
@@ -297,7 +300,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (!bluetoothService.connectToDevice(device)) {
                     // If Bluetooth is not connected, attempt to connect and reschedule this Runnable
                     connectToBluetoothDevice(device); // Recursive call
-                    appendToLogTextView("Tentei conectar com o parceiro.");
+                    //appendToLogTextView("Tentei conectar com o parceiro.");
+                    appendToLogTextView("I tried to connect with partner.");
                 } else {
                     // Bluetooth is connected, stop further executions
                     handler.removeCallbacksAndMessages(null);
@@ -315,7 +319,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         serviceIntent.putExtra("destinationLng", destinationLng);
         serviceIntent.putExtra("deviceMac", macAddress);
         ContextCompat.startForegroundService(this, serviceIntent);
-        appendToLogTextView("Iniciado o serviço de localização.");
+        //appendToLogTextView("Iniciado o serviço de localização.");
+        appendToLogTextView("Location service started.");
 
     }
 
@@ -361,7 +366,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (!notSyncedRecords.isEmpty()) {
                 Intent serviceIntent = new Intent(this, SyncService.class);
                 startService(serviceIntent);
-                appendToLogTextView("Sync service inicializado.");
+                //appendToLogTextView("Sync service inicializado.");
+                appendToLogTextView("Sync service initialized.");
             }
         } catch (Exception e) {
             Log.d(TAG, "startSyncService: " + e);

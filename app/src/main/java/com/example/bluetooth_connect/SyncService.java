@@ -130,13 +130,15 @@ public class SyncService extends Service {
                             db.updateRecordToSynced(record);
                         }
                         db.deleteAlreadySynced();
-                        MainActivity.appendToLogTextView("Dados bem sincronizados com a base de dados central.");
+                        //MainActivity.appendToLogTextView("Dados bem sincronizados com a base de dados central.");
+                        MainActivity.appendToLogTextView("Data well synchronized with the central database.");
                         stopSelf();
 
                     } else {
                         // Código de resposta diferente de 200-299 indica falha
                         Log.d(TAG, "Falha ao adicionar registros. Código de resposta: " + response.code());
-                        MainActivity.appendToLogTextView("Falha ao adicionar registros. Código de resposta: " + response.code());
+                        //MainActivity.appendToLogTextView("Falha ao adicionar registros. Código de resposta: " + response.code());
+                        MainActivity.appendToLogTextView("Failed to add records. Response code: " + response.code());
                     }
                 }
                 @Override
@@ -144,7 +146,8 @@ public class SyncService extends Service {
                     // Caso ocorra uma exceção durante a chamada
                     //System.out.println("Erro ao adicionar registros: " + t.getMessage());
                     Log.d(TAG, "Erro ao adicionar registros: " + t.getMessage());
-                    MainActivity.appendToLogTextView("Erro ao adicionar registros: " + t.getMessage());
+                    //MainActivity.appendToLogTextView("Erro ao adicionar registros: " + t.getMessage());
+                    MainActivity.appendToLogTextView("Error when adding records: " + t.getMessage());
                 }
             });
 

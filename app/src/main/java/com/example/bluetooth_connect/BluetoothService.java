@@ -84,12 +84,15 @@ public class BluetoothService extends Service {
             byte[] publicKeyBytes = publicKey.getEncoded();
             // Send publicKeyBytes to server
             mOutputStream.write(publicKeyBytes);
-            MainActivity.appendToLogTextView("Public key ENVIADA.");
+            //MainActivity.appendToLogTextView("Public key ENVIADA.");
+            MainActivity.appendToLogTextView("Public key SENT.");
         } catch (NoSuchAlgorithmException e) {
-            MainActivity.appendToLogTextView("Public key NÃO ENVIADA.");
+            //MainActivity.appendToLogTextView("Public key NÃO ENVIADA.");
+            MainActivity.appendToLogTextView("Public key NOT SENT.");
             e.printStackTrace();
         } catch (IOException e) {
-            MainActivity.appendToLogTextView("Public key NÃO ENVIADA.");
+            //MainActivity.appendToLogTextView("Public key NÃO ENVIADA.");
+            MainActivity.appendToLogTextView("Public key NOT SENT.");
             throw new RuntimeException(e);
         }
     }
@@ -161,11 +164,13 @@ public class BluetoothService extends Service {
                 serverPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decodedKeyBytes));
                 //String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
                 //System.out.println(publicKeyString);
-                MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+                //MainActivity.appendToLogTextView("Public key do parceiro RECEBIDA.");
+                MainActivity.appendToLogTextView("Partner's public key RECEIVED.");
             }
 
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
-            MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
+            //MainActivity.appendToLogTextView("Public key do parceiro NÃO RECEBIDA.");
+            MainActivity.appendToLogTextView("Partner's public key NOT RECEIVED.");
             // Handle error
             e.printStackTrace();
         }
@@ -239,7 +244,8 @@ public class BluetoothService extends Service {
             // Send encryptedData to server
             mOutputStream.write(encryptedAESAndData);
         } catch (Exception e) {
-            MainActivity.appendToLogTextView("Dados encriptados NÃO enviados.");
+            //MainActivity.appendToLogTextView("Dados encriptados NÃO enviados.");
+            MainActivity.appendToLogTextView("Encrypted data NOT sent.");
             e.printStackTrace();
         }
     }
@@ -358,11 +364,13 @@ public class BluetoothService extends Service {
             // Exibir os dados descriptografados
             //System.out.println("Decrypted data: " + new String(decryptedData, StandardCharsets.UTF_8));
 
-            MainActivity.appendToLogTextView("Dados foram recebidos e desencriptados.");
+            //MainActivity.appendToLogTextView("Dados foram recebidos e desencriptados.");
+            MainActivity.appendToLogTextView("Data has been received and decrypted.");
             return decryptedData;
 
         } catch (Exception e) {
-            MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
+            //MainActivity.appendToLogTextView("Dados NÃO foram recebidos.");
+            MainActivity.appendToLogTextView("Data has NOT been received.");
             e.printStackTrace();
             throw new Exception();
         }
@@ -376,10 +384,12 @@ public class BluetoothService extends Service {
 
             // Descriptografar a chave AES
             byte[] aesKeyBytes = cipher.doFinal(encryptedAesKey);
-            MainActivity.appendToLogTextView("Chave AES recebida foi desencriptada");
+            //MainActivity.appendToLogTextView("Chave AES recebida foi desencriptada");
+            MainActivity.appendToLogTextView("AES key received has been decrypted");
             return new SecretKeySpec(aesKeyBytes, "AES");
         } catch (Exception e) {
-            MainActivity.appendToLogTextView("Chave AES recebida NÃO foi desencriptada");
+            //MainActivity.appendToLogTextView("Chave AES recebida NÃO foi desencriptada");
+            MainActivity.appendToLogTextView("Received AES key has NOT been decrypted");
             e.printStackTrace();
             return null;
         }
@@ -428,13 +438,15 @@ public class BluetoothService extends Service {
                 mBluetoothSocket.connect();
             }catch (IOException connEx){
                 closeConnection();
-                MainActivity.appendToLogTextView("Conexao mal sucedida.");
+                //MainActivity.appendToLogTextView("Conexao mal sucedida.");
+                MainActivity.appendToLogTextView("Unsuccessful connection.");
                 return false;
             }
 
             if (mBluetoothSocket != null && mBluetoothSocket.isConnected()) {
                 MainActivity.setBluetoothConnected(true);
-                MainActivity.appendToLogTextView("Bluetooth conectado com o dispositivo.");
+                //MainActivity.appendToLogTextView("Bluetooth conectado com o dispositivo.");
+                MainActivity.appendToLogTextView("Bluetooth connected to the device.");
                 // Socket is connected, now we can obtain our IO streams
 
                 String stringDados = "";
@@ -454,7 +466,8 @@ public class BluetoothService extends Service {
 
                     //Data Exchange
                     sendDataEncryptedWithAES(uuid.toString());
-                    MainActivity.appendToLogTextView("UUID encriptado enviado.");
+                    //MainActivity.appendToLogTextView("UUID encriptado enviado.");
+                    MainActivity.appendToLogTextView("Encrypted UUID sent.");
                     //Receive confirmation message
                     String confirmationMessage = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
                     //receiveDataEncryptedWithAES();
@@ -465,7 +478,8 @@ public class BluetoothService extends Service {
 
                     // Send ready for data encrypted with AES
                     sendDataEncryptedWithAES("Ready for data");
-                    MainActivity.appendToLogTextView("Ready for data ENVIADO");
+                    //MainActivity.appendToLogTextView("Ready for data ENVIADO");
+                    MainActivity.appendToLogTextView("Ready for data SENT");
 
                     //Receive buffer size
                     receiveBufferSize();
@@ -503,7 +517,8 @@ public class BluetoothService extends Service {
                         //Receive json data and start sync service
                         stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
                         //System.out.println(stringDados);
-                        MainActivity.appendToLogTextView("Dados recebidos.");
+                        //MainActivity.appendToLogTextView("Dados recebidos.");
+                        MainActivity.appendToLogTextView("Data received.");
                         if (stringDados.equals("Conexao terminada"))
                             break;
 
@@ -511,20 +526,23 @@ public class BluetoothService extends Service {
                         if (countDados > 0)
                             processDataJSON(stringDados);
                         sendDataEncryptedWithAES(Integer.toString(countDados));
-                        MainActivity.appendToLogTextView("Enviado num dados");
+                        //MainActivity.appendToLogTextView("Enviado num dados");
+                        MainActivity.appendToLogTextView("Sent data number");
 
                         stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
                         if (stringDados.equals("Conexao terminada"))
                             break;
                         if (!stringDados.equals("Bloco enviado")) {
                             while (stringDados.equals("Num registos incorreto")){
-                                MainActivity.appendToLogTextView("Recebido " +  "(Num registos incorreto)");
+                                //MainActivity.appendToLogTextView("Recebido " +  "(Num registos incorreto)");
+                                MainActivity.appendToLogTextView("Received " + "(Incorrect number of records)");
                                 stringDados = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
                                 if (stringDados.equals("Conexao terminada"))
                                     break;
                             }
                         }else {
-                            MainActivity.appendToLogTextView("Recebido " +  "(Bloco enviado)");
+                            //MainActivity.appendToLogTextView("Recebido " +  "(Bloco enviado)");
+                            MainActivity.appendToLogTextView("Received " + "(Block sent)");
                         }
                     }
 
@@ -564,7 +582,8 @@ public class BluetoothService extends Service {
     public void receiveBufferSize() throws Exception{
         String bufferSizeString = new String(receiveDataEncryptedWithAES(), StandardCharsets.UTF_8);
         bufferSize = Integer.parseInt(bufferSizeString);
-        MainActivity.appendToLogTextView("Buffersize recebido. Tamanho: " + bufferSize);
+        //MainActivity.appendToLogTextView("Buffersize recebido. Tamanho: " + bufferSize);
+        MainActivity.appendToLogTextView("Buffersize received. Size: " + bufferSize);
     }
 
     public int countJSONData (String receivedData){
@@ -603,7 +622,8 @@ public class BluetoothService extends Service {
             // Set dataReceived to true since we received and processed data
             dataReceived = true;
             bufferSize = 0;
-            MainActivity.appendToLogTextView("Dados inseridos na BD local.");
+            //MainActivity.appendToLogTextView("Dados inseridos na BD local.");
+            MainActivity.appendToLogTextView("Data inserted into the local DB.");
             System.out.println("Dados inseridos na BD local.");
 
         } catch (JSONException e) {
