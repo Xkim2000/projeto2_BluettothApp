@@ -303,8 +303,13 @@ public class BluetoothService extends Service {
             if (bufferSize == 0){
                 encryptedData = new byte[2048];
             } else {
-                int nextDivisibleBy32 = ((bufferSize + 31) / 32) * 32;
-                encryptedData = new byte[nextDivisibleBy32];
+//                int nextDivisibleBy32 = ((bufferSize + 31) / 32) * 32;
+//                encryptedData = new byte[nextDivisibleBy32];
+                if(bufferSize < 1024){
+                    encryptedData = new byte[1024];
+                }else{
+                    encryptedData = new byte[2048];
+                }
             }
 
             // Create a flag to indicate if data is read successfully
